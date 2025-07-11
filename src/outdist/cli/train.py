@@ -7,6 +7,7 @@ import argparse
 from ..configs.model import ModelConfig
 from ..configs.trainer import TrainerConfig
 from ..data.datasets import make_dataset
+from ..data.binning import EqualWidthBinning
 from ..models import get_model
 from ..training.trainer import Trainer
 
@@ -34,8 +35,9 @@ def main(argv: list[str] | None = None) -> None:
     trainer = Trainer(
         TrainerConfig(batch_size=args.batch_size, max_epochs=args.epochs)
     )
+    binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
     model = get_model(ModelConfig(name=args.model))
-    trainer.fit(model, train_ds, val_ds)
+    trainer.fit(model, binning, train_ds, val_ds)
 
 
 if __name__ == "__main__":  # pragma: no cover - manual invocation

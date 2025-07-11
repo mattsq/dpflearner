@@ -35,3 +35,8 @@ def get_model(cfg: ModelConfig | str, **kwargs) -> BaseModel:
 
     model_cls = MODEL_REGISTRY[name]
     return model_cls(**params)
+
+# ------------------------------------------------------------------
+# Import built-in model implementations so they register themselves
+from . import mlp  # noqa: F401
+

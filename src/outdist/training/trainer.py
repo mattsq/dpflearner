@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader, Dataset
 from ..configs import trainer as trainer_cfg
 from ..models.base import BaseModel
 from ..metrics import METRICS_REGISTRY
+from ..losses import cross_entropy
 
 
 @dataclass
@@ -27,7 +28,7 @@ class Trainer:
     def __init__(self, cfg: trainer_cfg.TrainerConfig) -> None:
         self.cfg = cfg
         self.device = torch.device(cfg.device)
-        self.criterion = nn.CrossEntropyLoss()
+        self.loss_fn = cross_entropy
 
     # ------------------------------------------------------------------
     # Training
@@ -58,7 +59,7 @@ class Trainer:
 
                 optimizer.zero_grad()
                 logits = model(x)
-                loss = self.criterion(logits, y)
+                loss = self.loss_fn(logits, y)
                 loss.backward()
                 optimizer.step()
 
@@ -117,7 +118,7 @@ class Trainer:
                 x = x.to(self.device)
                 y = y.to(self.device)
                 logits = model(x)
-                _ = self.criterion(logits, y)
+                _ = self.loss_fn(logits, y)
 
 
 

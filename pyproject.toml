@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "outdist"
+version = "0.1.0"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+description = "Package for discrete distributions over continuous outcomes"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

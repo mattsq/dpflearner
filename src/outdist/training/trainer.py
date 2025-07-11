@@ -11,6 +11,7 @@ from ..configs import trainer as trainer_cfg
 from ..models.base import BaseModel
 from ..metrics import METRICS_REGISTRY
 from ..losses import cross_entropy
+from ..data import binning as binning_scheme
 
 
 @dataclass
@@ -36,10 +37,19 @@ class Trainer:
     def fit(
         self,
         model: BaseModel,
+        binning: binning_scheme.BinningScheme,
         train_ds: Dataset,
         val_ds: Optional[Dataset] = None,
     ) -> Checkpoint:
         """Train ``model`` on ``train_ds`` and optionally ``val_ds``."""
+
+        # Fit the binning strategy before training
+        targets = []
+        for _, y in DataLoader(train_ds, batch_size=self.cfg.batch_size):
+            targets.append(y)
+        if targets:
+            y_all = torch.cat(targets)
+            binning.fit(y_all)
 
         model.to(self.device)
         optimizer = torch.optim.Adam(model.parameters(), lr=self.cfg.lr)

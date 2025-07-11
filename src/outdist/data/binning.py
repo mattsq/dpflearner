@@ -26,6 +26,12 @@ class BinningScheme:
         # Ensure floating dtype for subsequent computations
         self.edges = self.edges.to(dtype=torch.get_default_dtype())
 
+    # ------------------------------------------------------------------
+    def fit(self, data: torch.Tensor) -> "BinningScheme":
+        """Return ``self`` for API compatibility."""
+
+        return self
+
     @property
     def n_bins(self) -> int:
         """Number of discrete bins."""

@@ -17,6 +17,7 @@ from torch.utils.data import Dataset, Subset
 from ..configs.trainer import TrainerConfig
 from ..models.base import BaseModel
 from ..training.trainer import Trainer
+from ..data.binning import EqualWidthBinning
 
 __all__ = ["CVFoldResult", "cross_validate"]
 
@@ -75,7 +76,8 @@ def cross_validate(
     for fold, (train_ds, val_ds) in enumerate(_split_dataset(dataset, k_folds), start=1):
         trainer = Trainer(trainer_cfg)
         model = model_factory()
-        ckpt = trainer.fit(model, train_ds, val_ds)
+        binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
+        ckpt = trainer.fit(model, binning, train_ds, val_ds)
         metrics_dict = trainer.evaluate(ckpt.model, val_ds, metrics=metrics)
         results.append(CVFoldResult(fold=fold, metrics=metrics_dict))
 

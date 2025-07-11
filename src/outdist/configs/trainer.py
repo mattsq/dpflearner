@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .base import BaseConfig
+
 __all__ = ["TrainerConfig"]
 
 @dataclass
-class TrainerConfig:
+class TrainerConfig(BaseConfig):
     """Configuration options for :class:`~outdist.training.trainer.Trainer`."""
 
     batch_size: int = 32

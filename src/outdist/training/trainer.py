@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from ..configs import trainer as trainer_cfg
 from ..models.base import BaseModel
+from ..metrics import METRICS_REGISTRY
 
 
 @dataclass
@@ -98,8 +99,10 @@ class Trainer:
         if not metrics:
             metrics = ["nll"]
 
-        if "nll" in metrics:
-            results["nll"] = float(self.criterion(y_pred, y_true).item())
+        for name in metrics:
+            metric_fn = METRICS_REGISTRY[name]
+            value = metric_fn(y_pred, y_true)
+            results[name] = float(value.item())
 
         return results
 

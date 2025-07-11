@@ -11,11 +11,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict
 
+from .base import BaseConfig
+
 __all__ = ["ModelConfig"]
 
 
 @dataclass
-class ModelConfig:
+class ModelConfig(BaseConfig):
     """Generic configuration used to instantiate models via ``get_model``."""
 
     name: str

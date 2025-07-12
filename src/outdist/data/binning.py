@@ -14,6 +14,8 @@ __all__ = [
     "QuantileBinning",
     "BootstrappedUniformBinning",
     "BootstrappedQuantileBinning",
+    "FreedmanDiaconisBinning",
+    "BootstrappedFreedmanDiaconisBinning",
     "KMeansBinning",
     "BootstrappedKMeansBinning",
     "LearnableBinningScheme",
@@ -138,6 +140,52 @@ class BootstrappedQuantileBinning(BinningScheme):
 
         scheme = bootstrap(strategy, data, n_bootstrap=n_bootstrap)
         super().__init__(edges=scheme.edges)
+
+
+class FreedmanDiaconisBinning(BinningScheme):
+    """Bins with width from the Freedman--Diaconis rule."""
+
+    def __init__(self, data: torch.Tensor) -> None:
+        data = data.flatten()
+        n = data.numel()
+        q1, q3 = torch.quantile(data, torch.tensor([0.25, 0.75], device=data.device))
+        iqr = q3 - q1
+        h = 2 * iqr / (n ** (1.0 / 3.0))
+        if h <= 0:
+            h = torch.finfo(data.dtype).eps
+        start = data.min()
+        end = data.max()
+        edges = torch.arange(start, end + h, h, device=data.device, dtype=data.dtype)
+        edges[-1] = end
+        super().__init__(edges=edges)
+
+
+class BootstrappedFreedmanDiaconisBinning(BinningScheme):
+    """Average Freedman--Diaconis bins over bootstrap resamples."""
+
+    def __init__(self, data: torch.Tensor, n_bootstrap: int = 10) -> None:
+        data = data.flatten()
+        n = data.numel()
+        starts = []
+        ends = []
+        hs = []
+        for _ in range(n_bootstrap):
+            idx = torch.randint(0, n, (n,), device=data.device)
+            sample = data[idx]
+            q1, q3 = torch.quantile(sample, torch.tensor([0.25, 0.75], device=data.device))
+            iqr = q3 - q1
+            h = 2 * iqr / (n ** (1.0 / 3.0))
+            if h <= 0:
+                h = torch.finfo(data.dtype).eps
+            starts.append(sample.min())
+            ends.append(sample.max())
+            hs.append(h)
+        start = torch.stack(starts).mean()
+        end = torch.stack(ends).mean()
+        h = torch.stack(hs).mean()
+        edges = torch.arange(start, end + h, h, device=data.device, dtype=data.dtype)
+        edges[-1] = end
+        super().__init__(edges=edges)
 
 
 def _kmeans_edges(data: torch.Tensor, n_bins: int, *, random_state: int | None = None) -> torch.Tensor:

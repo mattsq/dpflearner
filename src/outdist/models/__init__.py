@@ -42,4 +42,5 @@ from . import mlp  # noqa: F401
 from . import logistic_regression  # noqa: F401
 from . import gaussian_ls  # noqa: F401
 from . import mdn  # noqa: F401
+from . import quantile_rf  # noqa: F401
 

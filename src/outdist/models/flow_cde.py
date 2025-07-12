@@ -17,6 +17,7 @@ from nflows.distributions.normal import StandardNormal
 from .base import BaseModel
 from ..configs.model import ModelConfig
 from . import register_model
+from ..data import binning as binning_scheme
 
 
 def _make_transform(hidden_dim: int, context_dim: int, num_bins: int = 8) -> MaskedPiecewiseRationalQuadraticAutoregressiveTransform:
@@ -62,10 +63,13 @@ class FlowCDE(BaseModel):
         blocks: int = 5,
         hidden: int = 64,
         spline_bins: int = 8,
+        binner: binning_scheme.BinningScheme | None = None,
     ) -> None:
         super().__init__()
-        edges = torch.linspace(start, end, n_bins + 1)
-        self.register_buffer("bin_edges", edges)
+        if binner is None:
+            edges = torch.linspace(start, end, n_bins + 1)
+            binner = binning_scheme.BinningScheme(edges=edges)
+        self.binner = binner
         self.flow = build_flow(
             in_dim,
             n_blocks=blocks,
@@ -80,7 +84,7 @@ class FlowCDE(BaseModel):
 
     # ------------------------------------------------------------------
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        edges = self.bin_edges.to(x)
+        edges = self.binner.edges.to(x)
         n_edges = edges.numel()
         z, _ = self.flow._transform.forward(
             edges.view(-1, 1).expand(x.size(0), -1, 1).reshape(-1, 1),

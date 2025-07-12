@@ -9,6 +9,7 @@ from sklearn.ensemble import RandomForestRegressor
 from .base import BaseModel
 from ..configs.model import ModelConfig
 from . import register_model
+from ..data import binning as binning_scheme
 
 
 @register_model("quantile_rf")
@@ -23,13 +24,17 @@ class QuantileRandomForest(BaseModel):
         n_bins: int = 10,
         n_estimators: int = 100,
         random_state: int | None = None,
+        *,
+        binner: binning_scheme.BinningScheme | None = None,
     ) -> None:
         super().__init__()
         self.regressor = RandomForestRegressor(
             n_estimators=n_estimators, random_state=random_state
         )
-        edges = torch.linspace(start, end, n_bins + 1)
-        self.register_buffer("bin_edges", edges)
+        if binner is None:
+            edges = torch.linspace(start, end, n_bins + 1)
+            binner = binning_scheme.BinningScheme(edges=edges)
+        self.binner = binner
 
     # ------------------------------------------------------------------
     def fit(self, x: torch.Tensor, y: torch.Tensor) -> "QuantileRandomForest":
@@ -48,7 +53,7 @@ class QuantileRandomForest(BaseModel):
         X = x.detach().cpu().numpy()
         # Predictions from each tree shape ``(n_samples, n_estimators)``
         tree_preds = np.stack([t.predict(X) for t in self.regressor.estimators_], axis=1)
-        edges = self.bin_edges.detach().cpu().numpy()
+        edges = self.binner.edges.detach().cpu().numpy()
         n_bins = edges.size - 1
         idx = np.digitize(tree_preds, edges[1:], right=True)
         idx = np.clip(idx, 0, n_bins - 1)

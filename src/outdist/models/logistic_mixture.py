@@ -9,6 +9,7 @@ from .base import BaseModel
 from ..configs.model import ModelConfig
 from ..utils import make_mlp
 from . import register_model
+from ..data import binning as binning_scheme
 
 
 @register_model("logistic_mixture")
@@ -23,13 +24,17 @@ class LogisticMixture(BaseModel):
         n_bins: int = 10,
         n_components: int = 3,
         hidden_dims: int | tuple[int, ...] = (32, 32),
+        *,
+        binner: binning_scheme.BinningScheme | None = None,
     ) -> None:
         super().__init__()
         self.n_components = n_components
         out_dim = n_components * 3
         self.net = make_mlp(in_dim, out_dim, hidden_dims)
-        edges = torch.linspace(start, end, n_bins + 1)
-        self.register_buffer("bin_edges", edges)
+        if binner is None:
+            edges = torch.linspace(start, end, n_bins + 1)
+            binner = binning_scheme.BinningScheme(edges=edges)
+        self.binner = binner
 
     # ------------------------------------------------------------------
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -39,7 +44,7 @@ class LogisticMixture(BaseModel):
         weights = torch.softmax(logits, dim=-1)
         scales = log_scales.exp()
 
-        edges = self.bin_edges
+        edges = self.binner.edges.to(x)
         z = (edges.unsqueeze(0).unsqueeze(-1) - means.unsqueeze(1)) / scales.unsqueeze(1)
         cdf = torch.sigmoid(z)
         probs_comp = cdf[..., 1:, :] - cdf[..., :-1, :]

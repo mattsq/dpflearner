@@ -10,6 +10,7 @@ from torch import nn
 from .base import BaseModel
 from ..configs.model import ModelConfig
 from . import register_model
+from ..data import binning as binning_scheme
 
 
 @register_model("gaussian_ls")
@@ -22,18 +23,22 @@ class GaussianLocationScale(BaseModel):
         start: float = 0.0,
         end: float = 1.0,
         n_bins: int = 10,
+        *,
+        binner: binning_scheme.BinningScheme | None = None,
     ) -> None:
         super().__init__()
         self.mean_head = nn.Linear(in_dim, 1)
         self.log_std_head = nn.Linear(in_dim, 1)
-        edges = torch.linspace(start, end, n_bins + 1)
-        self.register_buffer("bin_edges", edges)
+        if binner is None:
+            edges = torch.linspace(start, end, n_bins + 1)
+            binner = binning_scheme.BinningScheme(edges=edges)
+        self.binner = binner
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         mu = self.mean_head(x).squeeze(-1)
         log_std = self.log_std_head(x).squeeze(-1)
         std = log_std.exp()
-        edges = self.bin_edges
+        edges = self.binner.edges.to(x)
         # compute CDF at each bin edge
         z = (edges.unsqueeze(0) - mu.unsqueeze(1)) / (std.unsqueeze(1) * math.sqrt(2))
         cdf = 0.5 * (1 + torch.erf(z))

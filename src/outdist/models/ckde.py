@@ -10,6 +10,7 @@ from torch import nn
 from .base import BaseModel
 from ..configs.model import ModelConfig
 from . import register_model
+from ..data import binning as binning_scheme
 
 
 @register_model("ckde")
@@ -24,13 +25,17 @@ class ConditionalKernelDensityEstimator(BaseModel):
         n_bins: int = 10,
         x_bandwidth: float = 1.0,
         y_bandwidth: float = 1.0,
+        *,
+        binner: binning_scheme.BinningScheme | None = None,
     ) -> None:
         super().__init__()
         self.in_dim = in_dim
         self.x_bandwidth = x_bandwidth
         self.y_bandwidth = y_bandwidth
-        edges = torch.linspace(start, end, n_bins + 1)
-        self.register_buffer("bin_edges", edges)
+        if binner is None:
+            edges = torch.linspace(start, end, n_bins + 1)
+            binner = binning_scheme.BinningScheme(edges=edges)
+        self.binner = binner
         self.register_buffer("x_train", torch.empty(0, in_dim))
         self.register_buffer("y_train", torch.empty(0))
 
@@ -38,8 +43,9 @@ class ConditionalKernelDensityEstimator(BaseModel):
     def fit(self, x: torch.Tensor, y: torch.Tensor) -> "ConditionalKernelDensityEstimator":
         """Store training data for kernel density estimation."""
 
-        self.x_train = x.detach().to(self.bin_edges.device)
-        self.y_train = y.detach().to(self.bin_edges.device)
+        device = self.binner.edges.device
+        self.x_train = x.detach().to(device)
+        self.y_train = y.detach().to(device)
         return self
 
     # ------------------------------------------------------------------
@@ -54,7 +60,7 @@ class ConditionalKernelDensityEstimator(BaseModel):
         weights = torch.exp(-0.5 * sqdist)
         weights = weights / weights.sum(dim=-1, keepdim=True)
 
-        edges = self.bin_edges
+        edges = self.binner.edges.to(x)
         y_train = self.y_train.unsqueeze(0).unsqueeze(0)  # (1,1,N)
         z = (edges.unsqueeze(0).unsqueeze(-1) - y_train) / (
             self.y_bandwidth * math.sqrt(2)

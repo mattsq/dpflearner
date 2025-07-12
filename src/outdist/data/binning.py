@@ -7,7 +7,13 @@ from typing import Tuple
 
 import torch
 
-__all__ = ["BinningScheme", "EqualWidthBinning", "QuantileBinning"]
+__all__ = [
+    "BinningScheme",
+    "EqualWidthBinning",
+    "QuantileBinning",
+    "BootstrappedUniformBinning",
+    "BootstrappedQuantileBinning",
+]
 
 
 @dataclass
@@ -71,3 +77,38 @@ class QuantileBinning(BinningScheme):
         probs = torch.linspace(0, 1, n_bins + 1, device=data.device)
         edges = torch.quantile(data.flatten(), probs)
         super().__init__(edges=edges)
+
+
+class BootstrappedUniformBinning(BinningScheme):
+    """Average equal-width bins over bootstrap resamples of ``data``."""
+
+    def __init__(self, data: torch.Tensor, n_bins: int, n_bootstrap: int = 10) -> None:
+        data = data.flatten()
+        n = data.numel()
+        edges_list = []
+        for _ in range(n_bootstrap):
+            idx = torch.randint(0, n, (n,), device=data.device)
+            sample = data[idx]
+            start = sample.min()
+            end = sample.max()
+            edges = torch.linspace(start, end, n_bins + 1, device=data.device)
+            edges_list.append(edges)
+        mean_edges = torch.stack(edges_list).mean(dim=0)
+        super().__init__(edges=mean_edges)
+
+
+class BootstrappedQuantileBinning(BinningScheme):
+    """Average quantile bins over bootstrap resamples of ``data``."""
+
+    def __init__(self, data: torch.Tensor, n_bins: int, n_bootstrap: int = 10) -> None:
+        data = data.flatten()
+        n = data.numel()
+        probs = torch.linspace(0, 1, n_bins + 1, device=data.device)
+        edges_list = []
+        for _ in range(n_bootstrap):
+            idx = torch.randint(0, n, (n,), device=data.device)
+            sample = data[idx]
+            edges = torch.quantile(sample, probs)
+            edges_list.append(edges)
+        mean_edges = torch.stack(edges_list).mean(dim=0)
+        super().__init__(edges=mean_edges)

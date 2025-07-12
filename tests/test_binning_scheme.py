@@ -1,5 +1,11 @@
 import torch
-from outdist.data.binning import BinningScheme, EqualWidthBinning, QuantileBinning
+from outdist.data.binning import (
+    BinningScheme,
+    EqualWidthBinning,
+    QuantileBinning,
+    BootstrappedUniformBinning,
+    BootstrappedQuantileBinning,
+)
 
 
 def test_equal_width_to_index():
@@ -17,3 +23,19 @@ def test_quantile_binning_edges():
     assert torch.isclose(scheme.edges[-1], data.max())
     # Number of bins should be n_bins
     assert scheme.n_bins == 4
+
+
+def test_bootstrap_uniform_binning_edges():
+    torch.manual_seed(0)
+    data = torch.arange(10, dtype=torch.float)
+    scheme = BootstrappedUniformBinning(data, n_bins=2, n_bootstrap=2)
+    expected = torch.tensor([0.5, 4.75, 9.0])
+    assert torch.allclose(scheme.edges, expected)
+
+
+def test_bootstrap_quantile_binning_edges():
+    torch.manual_seed(0)
+    data = torch.arange(1, 6, dtype=torch.float)
+    scheme = BootstrappedQuantileBinning(data, n_bins=2, n_bootstrap=2)
+    expected = torch.tensor([2.0, 4.0, 5.0])
+    assert torch.allclose(scheme.edges, expected)

@@ -7,6 +7,7 @@ from outdist.data.binning import (
     BootstrappedQuantileBinning,
     KMeansBinning,
     BootstrappedKMeansBinning,
+    bootstrap,
 )
 
 
@@ -57,3 +58,17 @@ def test_bootstrap_kmeans_binning_edges_shape():
     data = torch.randn(50)
     scheme = BootstrappedKMeansBinning(data, n_bins=3, n_bootstrap=2, random_state=0)
     assert scheme.edges.numel() == 4
+
+
+def test_bootstrap_utility_matches_quantile():
+    torch.manual_seed(0)
+    data = torch.arange(1, 6, dtype=torch.float)
+
+    def strategy(sample: torch.Tensor) -> torch.Tensor:
+        probs = torch.linspace(0, 1, 3, device=sample.device)
+        return torch.quantile(sample, probs)
+
+    scheme = bootstrap(strategy, data, n_bootstrap=2)
+    torch.manual_seed(0)
+    expected = BootstrappedQuantileBinning(data, n_bins=2, n_bootstrap=2)
+    assert torch.allclose(scheme.edges, expected.edges)

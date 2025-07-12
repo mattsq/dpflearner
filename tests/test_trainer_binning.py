@@ -70,3 +70,17 @@ def test_trainer_rejects_learnable_bins_for_nonmodule():
     with pytest.raises(TypeError):
         trainer.fit(model, binner, train_ds, val_ds)
 
+
+def test_trainer_accepts_callable_binning():
+    train_ds, val_ds, _ = make_dataset("dummy", n_samples=10)
+    trainer = Trainer(TrainerConfig(max_epochs=0))
+
+    def factory(y: torch.Tensor) -> BinningScheme:
+        start = float(y.min())
+        end = float(y.max())
+        return BinningScheme(edges=torch.linspace(start, end, 3))
+
+    model = DummyModel(out_dim=2)
+    trainer.fit(model, factory, train_ds, val_ds)
+    assert isinstance(model.binner, BinningScheme)
+

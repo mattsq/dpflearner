@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import torch
 from torch import nn
@@ -48,7 +48,8 @@ class Trainer:
     def fit(
         self,
         model: BaseModel,
-        binning: binning_scheme.BinningScheme,
+        binning: binning_scheme.BinningScheme
+        | Callable[[torch.Tensor], binning_scheme.BinningScheme],
         train_ds: Dataset,
         val_ds: Optional[Dataset] = None,
         *,
@@ -65,7 +66,10 @@ class Trainer:
             targets.append(y)
         if targets:
             y_all = torch.cat(targets)
-            binning.fit(y_all)
+            if not isinstance(binning, binning_scheme.BinningScheme) and callable(binning):
+                binning = binning(y_all)
+            else:
+                binning.fit(y_all)  # type: ignore[call-arg]
             if isinstance(binning, binning_scheme.LearnableBinningScheme) and not isinstance(model, nn.Module):
                 raise TypeError("Learnable bins require model to be an nn.Module")
             if hasattr(model, "binner"):

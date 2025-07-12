@@ -1,6 +1,7 @@
 import itertools
 import importlib
 import pytest
+import torch
 
 from outdist.training.ensemble_trainer import EnsembleTrainer
 from outdist.configs.trainer import TrainerConfig
@@ -119,3 +120,20 @@ def test_ensemble_trainer_runs(cfg_pair) -> None:
     ensemble = ens_trainer.fit(binning, train_ds, val_ds)
     assert isinstance(ensemble, AverageEnsemble)
     assert len(ensemble.models) == 2
+
+
+def test_stacked_ensemble_trainer_runs() -> None:
+    model_cfgs = [
+        ModelConfig(name="mlp", params={"in_dim": 1, "out_dim": 10, "hidden_dims": [4]}),
+        ModelConfig(name="logreg", params={"in_dim": 1, "out_dim": 10}),
+    ]
+    train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
+    binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
+    trainer_cfg = TrainerConfig(max_epochs=1, batch_size=4)
+    ens_trainer = EnsembleTrainer(model_cfgs, trainer_cfg, bootstrap=False, n_jobs=1, stack=True)
+    ensemble = ens_trainer.fit(binning, train_ds, val_ds)
+    from outdist.ensembles.stacked import StackedEnsemble
+
+    assert isinstance(ensemble, StackedEnsemble)
+    assert len(ensemble.models) == 2
+    assert torch.isclose(ensemble.weights.sum(), torch.tensor(1.0), atol=1e-5)

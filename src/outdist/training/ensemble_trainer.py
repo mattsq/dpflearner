@@ -12,6 +12,7 @@ from ..configs.model import ModelConfig
 from ..data.binning import BinningScheme
 from .trainer import Trainer
 from ..ensembles.average import AverageEnsemble
+from ..ensembles.stacked import StackedEnsemble, learn_weights
 
 class EnsembleTrainer:
     """Bagging / deep ensemble trainer."""
@@ -25,6 +26,8 @@ class EnsembleTrainer:
         bootstrap: bool = True,
         n_jobs: int = 1,
         device: str | None = None,
+        stack: bool = False,
+        stack_cfg: dict | None = None,
     ) -> None:
         self.model_cfgs = model_cfgs
         self.trainer_cfg = trainer_cfg
@@ -32,6 +35,8 @@ class EnsembleTrainer:
         self.bootstrap = bootstrap
         self.n_jobs = n_jobs
         self.device = device or trainer_cfg.device
+        self.stack = stack
+        self.stack_cfg = stack_cfg or {}
 
     # ------------------------------------------------------------------
     def _fit_one(
@@ -79,4 +84,19 @@ class EnsembleTrainer:
             models = Parallel(n_jobs=self.n_jobs)(
                 delayed(self._fit_one)(i, binning, data) for i in range(len(self.model_cfgs))
             )
-        return AverageEnsemble(models)
+
+        if self.stack:
+            assert val_ds is not None, "stacking needs a validation split"
+            # Gather validation arrays
+            loader = torch.utils.data.DataLoader(val_ds, batch_size=len(val_ds))
+            X_val_list: List[torch.Tensor] = []
+            y_val_list: List[torch.Tensor] = []
+            for xb, yb in loader:
+                X_val_list.append(xb)
+                y_val_list.append(yb)
+            X_val = torch.cat(X_val_list).numpy()
+            y_val = torch.cat(y_val_list).numpy()
+            w = learn_weights(models, X_val, y_val, l2=self.stack_cfg.get("l2", 1e-3))
+            return StackedEnsemble(models, w)
+        else:
+            return AverageEnsemble(models)

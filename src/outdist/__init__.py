@@ -6,6 +6,7 @@ from .models import get_model, register_model  # re-exported for convenience
 from .training.trainer import Trainer
 from .training.ensemble_trainer import EnsembleTrainer
 from .ensembles.average import AverageEnsemble
+from .ensembles.stacked import StackedEnsemble
 from .data.datasets import make_dataset
 from .calibration import get_calibrator, register_calibrator
 
@@ -18,6 +19,7 @@ __all__ = [
     "Trainer",
     "EnsembleTrainer",
     "AverageEnsemble",
+    "StackedEnsemble",
     "make_dataset",
 ]
 

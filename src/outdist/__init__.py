@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from .models import get_model, register_model  # re-exported for convenience
 from .training.trainer import Trainer
+from .training.ensemble_trainer import EnsembleTrainer
+from .ensembles.average import AverageEnsemble
 from .data.datasets import make_dataset
 from .calibration import get_calibrator, register_calibrator
 
@@ -14,6 +16,8 @@ __all__ = [
     "get_calibrator",
     "register_calibrator",
     "Trainer",
+    "EnsembleTrainer",
+    "AverageEnsemble",
     "make_dataset",
 ]
 

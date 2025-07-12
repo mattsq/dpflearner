@@ -6,6 +6,7 @@ import argparse
 
 from ..configs.model import ModelConfig
 from ..configs.trainer import TrainerConfig
+from ..configs.calibration import CalibratorConfig
 from ..data.datasets import make_dataset
 from ..data.binning import EqualWidthBinning
 from ..models import get_model
@@ -28,12 +29,29 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--batch-size", type=int, default=32, help="Batch size for training"
     )
+    parser.add_argument(
+        "--calibrate",
+        choices=["dirichlet"],
+        help="Optional calibration method",
+    )
+    parser.add_argument(
+        "--l2",
+        type=float,
+        default=1e-3,
+        help="L2 regularisation for Dirichlet calibration",
+    )
 
     args = parser.parse_args(argv)
 
     train_ds, val_ds, _ = make_dataset(args.dataset)
+    calib_cfg = (
+        CalibratorConfig(name=args.calibrate, params={"l2": args.l2})
+        if args.calibrate
+        else None
+    )
     trainer = Trainer(
-        TrainerConfig(batch_size=args.batch_size, max_epochs=args.epochs)
+        TrainerConfig(batch_size=args.batch_size, max_epochs=args.epochs),
+        calibrator_cfg=calib_cfg,
     )
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
     model = get_model(ModelConfig(name=args.model))

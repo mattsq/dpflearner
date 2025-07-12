@@ -8,10 +8,12 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from ..configs import trainer as trainer_cfg
+from ..configs.calibration import CalibratorConfig
 from ..models.base import BaseModel
 from ..metrics import METRICS_REGISTRY
 from ..losses import cross_entropy, evidential_loss
 from ..data import binning as binning_scheme
+from ..calibration import get_calibrator, BaseCalibrator
 
 
 @dataclass
@@ -21,15 +23,24 @@ class Checkpoint:
     model: BaseModel
     epoch: int
     metrics: Optional[Dict[str, float]] = None
+    calibrator: Optional[BaseCalibrator] = None
 
 
 class Trainer:
     """Minimal training loop implementing the design described in ``prompt.md``."""
 
-    def __init__(self, cfg: trainer_cfg.TrainerConfig, *, loss_fn= cross_entropy) -> None:
+    def __init__(
+        self,
+        cfg: trainer_cfg.TrainerConfig,
+        calibrator_cfg: CalibratorConfig | None = None,
+        *,
+        loss_fn=cross_entropy,
+    ) -> None:
         self.cfg = cfg
         self.device = torch.device(cfg.device)
         self.loss_fn = loss_fn
+        self.calibrator_cfg = calibrator_cfg
+        self.calibrator: Optional[BaseCalibrator] = None
 
     # ------------------------------------------------------------------
     # Training
@@ -93,7 +104,34 @@ class Trainer:
             if val_loader is not None:
                 self._run_validation(model, val_loader)
 
-        return Checkpoint(model=model, epoch=self.cfg.max_epochs)
+        # Fit calibrator on validation data if requested
+        if self.calibrator_cfg is not None and val_loader is not None:
+            probs_list: List[torch.Tensor] = []
+            labels_list: List[torch.Tensor] = []
+            model.eval()
+            with torch.no_grad():
+                for batch in val_loader:
+                    x, y = batch
+                    x = x.to(self.device)
+                    out = model(x)
+                    logits = out
+                    if isinstance(out, dict):
+                        logits = out.get("logits", out.get("probs").log())
+                    probs = logits.softmax(dim=-1).cpu()
+                    probs_list.append(probs)
+                    labels_list.append(y)
+            val_probs = torch.cat(probs_list)
+            val_labels = torch.cat(labels_list)
+            self.calibrator = get_calibrator(
+                self.calibrator_cfg, n_bins=val_probs.size(1)
+            )
+            self.calibrator.fit(val_probs, val_labels)
+
+        return Checkpoint(
+            model=model,
+            epoch=self.cfg.max_epochs,
+            calibrator=self.calibrator,
+        )
 
     # ------------------------------------------------------------------
     # Evaluation
@@ -126,6 +164,11 @@ class Trainer:
 
         y_pred = torch.cat(preds)
         y_true = torch.cat(targets)
+
+        if self.calibrator is not None:
+            probs = y_pred.softmax(dim=-1)
+            probs = self.calibrator(probs)
+            y_pred = probs.log()
 
         if not metrics:
             metrics = ["nll"]

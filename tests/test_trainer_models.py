@@ -93,13 +93,34 @@ MODEL_CONFIGS = [
             "spline_bins": 4,
         },
     ),
+    (
+        "diffusion",
+        {
+            "in_dim": 1,
+            "start": 0.0,
+            "end": 1.0,
+            "n_bins": 10,
+            "sigma_min": 1e-3,
+            "sigma_max": 1.0,
+            "hidden": 16,
+            "layers": 2,
+            "mc_bins": 16,
+        },
+    ),
 ]
 
 
 @pytest.mark.parametrize("name, kwargs", MODEL_CONFIGS)
 def test_model_can_train_with_trainer(name: str, kwargs: dict) -> None:
-    train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
-    trainer = Trainer(TrainerConfig(max_epochs=1, batch_size=4))
+    if name == "diffusion":
+        x = torch.randn(20, 1)
+        y = torch.randn(20, 1)
+        dataset = torch.utils.data.TensorDataset(x, y)
+        train_ds, val_ds = torch.utils.data.random_split(dataset, [16, 4])
+        trainer = Trainer(TrainerConfig(max_epochs=1, batch_size=4), loss_fn=None)
+    else:
+        train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
+        trainer = Trainer(TrainerConfig(max_epochs=1, batch_size=4))
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
     model = get_model(name, **kwargs)
 

@@ -41,4 +41,5 @@ def get_model(cfg: ModelConfig | str, **kwargs) -> BaseModel:
 from . import mlp  # noqa: F401
 from . import logistic_regression  # noqa: F401
 from . import gaussian_ls  # noqa: F401
+from . import mdn  # noqa: F401
 

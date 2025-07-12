@@ -2,7 +2,7 @@ import copy
 import random
 import numpy as np
 import torch
-from typing import Any, List, Tuple, Optional
+from typing import Any, List, Tuple, Optional, Callable
 
 from joblib import Parallel, delayed
 
@@ -42,7 +42,8 @@ class EnsembleTrainer:
     def _fit_one(
         self,
         cfg_idx: int,
-        binning: BinningScheme,
+        binning: BinningScheme
+        | Callable[[torch.Tensor], BinningScheme],
         data: Tuple[torch.utils.data.Dataset, Optional[torch.utils.data.Dataset]],
     ):
         train_ds, val_ds = data
@@ -73,7 +74,8 @@ class EnsembleTrainer:
     # ------------------------------------------------------------------
     def fit(
         self,
-        binning: BinningScheme,
+        binning: BinningScheme
+        | Callable[[torch.Tensor], BinningScheme],
         train_ds: torch.utils.data.Dataset,
         val_ds: Optional[torch.utils.data.Dataset] = None,
     ) -> AverageEnsemble:

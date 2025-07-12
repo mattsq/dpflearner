@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset
 from ..configs import trainer as trainer_cfg
 from ..models.base import BaseModel
 from ..metrics import METRICS_REGISTRY
-from ..losses import cross_entropy
+from ..losses import cross_entropy, evidential_loss
 from ..data import binning as binning_scheme
 
 
@@ -26,10 +26,10 @@ class Checkpoint:
 class Trainer:
     """Minimal training loop implementing the design described in ``prompt.md``."""
 
-    def __init__(self, cfg: trainer_cfg.TrainerConfig) -> None:
+    def __init__(self, cfg: trainer_cfg.TrainerConfig, *, loss_fn= cross_entropy) -> None:
         self.cfg = cfg
         self.device = torch.device(cfg.device)
-        self.loss_fn = cross_entropy
+        self.loss_fn = loss_fn
 
     # ------------------------------------------------------------------
     # Training
@@ -78,8 +78,14 @@ class Trainer:
 
                 if optimizer is not None:
                     optimizer.zero_grad()
-                logits = model(x)
-                loss = self.loss_fn(logits, y)
+                out = model(x)
+                logits = out
+                if isinstance(out, dict):
+                    logits = out.get("logits", out.get("probs").log())
+                if self.loss_fn is evidential_loss:
+                    loss = self.loss_fn(out["alpha"], y)
+                else:
+                    loss = self.loss_fn(logits, y)
                 if optimizer is not None:
                     loss.backward()
                     optimizer.step()
@@ -111,7 +117,10 @@ class Trainer:
             for batch in loader:
                 x, y = batch
                 x = x.to(self.device)
-                logits = model(x)
+                out = model(x)
+                logits = out
+                if isinstance(out, dict):
+                    logits = out.get("logits", out.get("probs").log())
                 preds.append(logits.cpu())
                 targets.append(y)
 
@@ -138,8 +147,14 @@ class Trainer:
                 x, y = batch
                 x = x.to(self.device)
                 y = y.to(self.device)
-                logits = model(x)
-                _ = self.loss_fn(logits, y)
+                out = model(x)
+                logits = out
+                if isinstance(out, dict):
+                    logits = out.get("logits", out.get("probs").log())
+                if self.loss_fn is evidential_loss:
+                    _ = self.loss_fn(out["alpha"], y)
+                else:
+                    _ = self.loss_fn(logits, y)
 
 
 

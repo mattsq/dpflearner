@@ -42,6 +42,7 @@ MODEL_CONFIGS = [
             "random_state": 0,
         },
     ),
+    ("evidential", {"in_dim": 1, "n_bins": 10, "hidden_dims": [4, 4]}),
 ]
 
 

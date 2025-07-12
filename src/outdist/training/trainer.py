@@ -99,7 +99,9 @@ class Trainer:
                 logits = out
                 if isinstance(out, dict):
                     logits = out.get("logits", out.get("probs").log())
-                if self.loss_fn is evidential_loss:
+                if self.loss_fn is None and hasattr(model, "dsm_loss"):
+                    loss = model.dsm_loss(x, y)
+                elif self.loss_fn is evidential_loss:
                     loss = self.loss_fn(out["alpha"], y)
                 else:
                     loss = self.loss_fn(logits, y)
@@ -230,7 +232,9 @@ class Trainer:
                 logits = out
                 if isinstance(out, dict):
                     logits = out.get("logits", out.get("probs").log())
-                if self.loss_fn is evidential_loss:
+                if self.loss_fn is None and hasattr(model, "dsm_loss"):
+                    _ = model.dsm_loss(x, y)
+                elif self.loss_fn is evidential_loss:
                     _ = self.loss_fn(out["alpha"], y)
                 else:
                     _ = self.loss_fn(logits, y)

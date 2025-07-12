@@ -25,6 +25,12 @@ def test_train_cli_runs(tmp_path, monkeypatch):
     train.main(args)
 
 
+def test_train_cli_ckde(tmp_path, monkeypatch):
+    args = ["--model", "ckde", "--dataset", "dummy", "--epochs", "0", "--batch-size", "2"]
+    monkeypatch.chdir(tmp_path)
+    train.main(args)
+
+
 def test_evaluate_cli_runs(tmp_path, monkeypatch):
     args = ["--model", "dummy_cli", "--dataset", "dummy", "--batch-size", "2", "--metrics", "nll"]
     monkeypatch.chdir(tmp_path)

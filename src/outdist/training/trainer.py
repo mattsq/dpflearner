@@ -43,13 +43,19 @@ class Trainer:
     ) -> Checkpoint:
         """Train ``model`` on ``train_ds`` and optionally ``val_ds``."""
 
-        # Fit the binning strategy before training
+        # Fit the binning strategy before training and handle models that
+        # require a separate ``fit`` step (e.g. non-neural estimators).
+        features = []
         targets = []
-        for _, y in DataLoader(train_ds, batch_size=self.cfg.batch_size):
+        for x, y in DataLoader(train_ds, batch_size=self.cfg.batch_size):
+            features.append(x)
             targets.append(y)
         if targets:
             y_all = torch.cat(targets)
             binning.fit(y_all)
+            if hasattr(model, "fit"):
+                x_all = torch.cat(features)
+                model.fit(x_all.to(self.device), y_all.to(self.device))
 
         model.to(self.device)
         params = list(model.parameters())

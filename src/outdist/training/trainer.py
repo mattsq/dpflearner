@@ -52,7 +52,10 @@ class Trainer:
             binning.fit(y_all)
 
         model.to(self.device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=self.cfg.lr)
+        params = list(model.parameters())
+        optimizer = (
+            torch.optim.Adam(params, lr=self.cfg.lr) if params else None
+        )
         train_loader = DataLoader(train_ds, batch_size=self.cfg.batch_size, shuffle=True)
         val_loader = (
             DataLoader(val_ds, batch_size=self.cfg.batch_size)
@@ -67,11 +70,13 @@ class Trainer:
                 x = x.to(self.device)
                 y = y.to(self.device)
 
-                optimizer.zero_grad()
+                if optimizer is not None:
+                    optimizer.zero_grad()
                 logits = model(x)
                 loss = self.loss_fn(logits, y)
-                loss.backward()
-                optimizer.step()
+                if optimizer is not None:
+                    loss.backward()
+                    optimizer.step()
 
             if val_loader is not None:
                 self._run_validation(model, val_loader)

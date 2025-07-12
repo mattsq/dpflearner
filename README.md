@@ -50,6 +50,8 @@ The following model names can be passed to `get_model` or the CLI:
 - `logistic_mixture` – mixture of logistics
 - `ckde` – conditional kernel density estimator
 - `quantile_rf` – quantile regression forest
+- `lincde` – tree-based estimator via Lindsey's method
+- `rfcde` – random forest conditional density estimator
 - `evidential` – placeholder for an evidential neural network
 
 Additional architectures can register themselves via

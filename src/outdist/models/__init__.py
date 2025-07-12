@@ -44,6 +44,8 @@ from . import gaussian_ls  # noqa: F401
 from . import mdn  # noqa: F401
 from . import quantile_rf  # noqa: F401
 from . import ckde  # noqa: F401
+from . import lincde  # noqa: F401
+from . import rfcde  # noqa: F401
 from . import logistic_mixture  # noqa: F401
 from . import evidential  # noqa: F401
 from . import flow_cde  # noqa: F401

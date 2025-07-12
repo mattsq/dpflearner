@@ -52,11 +52,6 @@ def test_model_can_train_with_trainer(name: str, kwargs: dict) -> None:
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
     model = get_model(name, **kwargs)
 
-    if name in {"ckde", "quantile_rf"}:
-        loader = torch.utils.data.DataLoader(train_ds, batch_size=len(train_ds))
-        x_train, y_train = next(iter(loader))
-        model.fit(x_train, y_train)
-
     ckpt = trainer.fit(model, binning, train_ds, val_ds)
     assert ckpt.epoch == 1
     assert isinstance(ckpt.model, type(model))

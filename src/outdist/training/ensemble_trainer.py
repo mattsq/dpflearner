@@ -9,7 +9,7 @@ from joblib import Parallel, delayed
 from ..models import get_model
 from ..configs.trainer import TrainerConfig
 from ..configs.model import ModelConfig
-from ..data.binning import BinningScheme
+from ..data.binning import BinningScheme, LearnableBinningScheme
 from .trainer import Trainer
 from ..ensembles.average import AverageEnsemble
 from ..ensembles.stacked import StackedEnsemble, learn_weights
@@ -80,6 +80,8 @@ class EnsembleTrainer:
         val_ds: Optional[torch.utils.data.Dataset] = None,
     ) -> AverageEnsemble:
         data = (train_ds, val_ds)
+        if self.bootstrap and isinstance(binning, LearnableBinningScheme):
+            raise ValueError("Bootstrapping is incompatible with LearnableBinningScheme")
         if self.n_jobs == 1:
             models = [self._fit_one(i, binning, data) for i in range(len(self.model_cfgs))]
         else:

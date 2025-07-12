@@ -3,12 +3,8 @@ from outdist.data.binning import (
     BinningScheme,
     EqualWidthBinning,
     QuantileBinning,
-    BootstrappedUniformBinning,
-    BootstrappedQuantileBinning,
     FreedmanDiaconisBinning,
-    BootstrappedFreedmanDiaconisBinning,
     KMeansBinning,
-    BootstrappedKMeansBinning,
     bootstrap,
 )
 
@@ -30,21 +26,6 @@ def test_quantile_binning_edges():
     assert scheme.n_bins == 4
 
 
-def test_bootstrap_uniform_binning_edges():
-    torch.manual_seed(0)
-    data = torch.arange(10, dtype=torch.float)
-    scheme = BootstrappedUniformBinning(data, n_bins=2, n_bootstrap=2)
-    expected = torch.tensor([0.5, 4.75, 9.0])
-    assert torch.allclose(scheme.edges, expected)
-
-
-def test_bootstrap_quantile_binning_edges():
-    torch.manual_seed(0)
-    data = torch.arange(1, 6, dtype=torch.float)
-    scheme = BootstrappedQuantileBinning(data, n_bins=2, n_bootstrap=2)
-    expected = torch.tensor([2.0, 4.0, 5.0])
-    assert torch.allclose(scheme.edges, expected)
-
 
 def test_kmeans_binning_edges_span():
     torch.manual_seed(0)
@@ -53,13 +34,6 @@ def test_kmeans_binning_edges_span():
     assert torch.isclose(scheme.edges[0], data.min())
     assert torch.isclose(scheme.edges[-1], data.max())
     assert scheme.n_bins == 3
-
-
-def test_bootstrap_kmeans_binning_edges_shape():
-    torch.manual_seed(0)
-    data = torch.randn(50)
-    scheme = BootstrappedKMeansBinning(data, n_bins=3, n_bootstrap=2, random_state=0)
-    assert scheme.edges.numel() == 4
 
 
 
@@ -73,8 +47,14 @@ def test_bootstrap_utility_matches_quantile():
 
     scheme = bootstrap(strategy, data, n_bootstrap=2)
     torch.manual_seed(0)
-    expected = BootstrappedQuantileBinning(data, n_bins=2, n_bootstrap=2)
-    assert torch.allclose(scheme.edges, expected.edges)
+    edges_list = []
+    n = len(data)
+    for _ in range(2):
+        idx = torch.randint(0, n, (n,))
+        sample = data[idx]
+        edges_list.append(strategy(sample))
+    expected = torch.stack(edges_list).mean(dim=0)
+    assert torch.allclose(scheme.edges, expected)
 
 def test_freedman_diaconis_binning_edges():
     data = torch.arange(10, dtype=torch.float)
@@ -87,27 +67,3 @@ def test_freedman_diaconis_binning_edges():
     assert torch.allclose(scheme.edges, expected)
 
 
-def test_bootstrap_freedman_diaconis_binning_edges():
-    torch.manual_seed(0)
-    data = torch.arange(10, dtype=torch.float)
-    starts = []
-    ends = []
-    hs = []
-    n = len(data)
-    for _ in range(2):
-        idx = torch.randint(0, n, (n,))
-        sample = data[idx]
-        q1, q3 = torch.quantile(sample, torch.tensor([0.25, 0.75]))
-        iqr = q3 - q1
-        h = 2 * iqr / (n ** (1 / 3))
-        starts.append(sample.min())
-        ends.append(sample.max())
-        hs.append(h)
-    start = torch.stack(starts).mean()
-    end = torch.stack(ends).mean()
-    h = torch.stack(hs).mean()
-    expected = torch.arange(start, end + h, h)
-    expected[-1] = end
-    torch.manual_seed(0)
-    scheme = BootstrappedFreedmanDiaconisBinning(data, n_bootstrap=2)
-    assert torch.allclose(scheme.edges, expected)

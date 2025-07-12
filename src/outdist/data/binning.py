@@ -12,12 +12,8 @@ __all__ = [
     "BinningScheme",
     "EqualWidthBinning",
     "QuantileBinning",
-    "BootstrappedUniformBinning",
-    "BootstrappedQuantileBinning",
     "FreedmanDiaconisBinning",
-    "BootstrappedFreedmanDiaconisBinning",
     "KMeansBinning",
-    "BootstrappedKMeansBinning",
     "LearnableBinningScheme",
     "bootstrap",
 ]
@@ -116,30 +112,6 @@ class QuantileBinning(BinningScheme):
         super().__init__(edges=edges)
 
 
-class BootstrappedUniformBinning(BinningScheme):
-    """Average equal-width bins over bootstrap resamples of ``data``."""
-
-    def __init__(self, data: torch.Tensor, n_bins: int, n_bootstrap: int = 10) -> None:
-        def strategy(sample: torch.Tensor) -> torch.Tensor:
-            start = sample.min()
-            end = sample.max()
-            return torch.linspace(start, end, n_bins + 1, device=sample.device)
-
-        scheme = bootstrap(strategy, data, n_bootstrap=n_bootstrap)
-        super().__init__(edges=scheme.edges)
-
-
-class BootstrappedQuantileBinning(BinningScheme):
-    """Average quantile bins over bootstrap resamples of ``data``."""
-
-    def __init__(self, data: torch.Tensor, n_bins: int, n_bootstrap: int = 10) -> None:
-        probs = torch.linspace(0, 1, n_bins + 1, device=data.device)
-
-        def strategy(sample: torch.Tensor) -> torch.Tensor:
-            return torch.quantile(sample, probs)
-
-        scheme = bootstrap(strategy, data, n_bootstrap=n_bootstrap)
-        super().__init__(edges=scheme.edges)
 
 
 class FreedmanDiaconisBinning(BinningScheme):
@@ -160,32 +132,6 @@ class FreedmanDiaconisBinning(BinningScheme):
         super().__init__(edges=edges)
 
 
-class BootstrappedFreedmanDiaconisBinning(BinningScheme):
-    """Average Freedman--Diaconis bins over bootstrap resamples."""
-
-    def __init__(self, data: torch.Tensor, n_bootstrap: int = 10) -> None:
-        data = data.flatten()
-        n = data.numel()
-        starts = []
-        ends = []
-        hs = []
-        for _ in range(n_bootstrap):
-            idx = torch.randint(0, n, (n,), device=data.device)
-            sample = data[idx]
-            q1, q3 = torch.quantile(sample, torch.tensor([0.25, 0.75], device=data.device))
-            iqr = q3 - q1
-            h = 2 * iqr / (n ** (1.0 / 3.0))
-            if h <= 0:
-                h = torch.finfo(data.dtype).eps
-            starts.append(sample.min())
-            ends.append(sample.max())
-            hs.append(h)
-        start = torch.stack(starts).mean()
-        end = torch.stack(ends).mean()
-        h = torch.stack(hs).mean()
-        edges = torch.arange(start, end + h, h, device=data.device, dtype=data.dtype)
-        edges[-1] = end
-        super().__init__(edges=edges)
 
 
 def _kmeans_edges(data: torch.Tensor, n_bins: int, *, random_state: int | None = None) -> torch.Tensor:
@@ -210,15 +156,6 @@ class KMeansBinning(BinningScheme):
         super().__init__(edges=edges)
 
 
-class BootstrappedKMeansBinning(BinningScheme):
-    """Average k-means bins over bootstrap resamples of ``data``."""
-
-    def __init__(self, data: torch.Tensor, n_bins: int, n_bootstrap: int = 10, *, random_state: int | None = None) -> None:
-        def strategy(sample: torch.Tensor) -> torch.Tensor:
-            return _kmeans_edges(sample, n_bins, random_state=random_state)
-
-        scheme = bootstrap(strategy, data, n_bootstrap=n_bootstrap)
-        super().__init__(edges=scheme.edges)
 
 
 class LearnableBinningScheme(BinningScheme, nn.Module):

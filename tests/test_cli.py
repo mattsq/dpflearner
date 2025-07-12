@@ -26,7 +26,10 @@ def test_train_cli_runs(tmp_path, monkeypatch):
     train.main(args)
 
 
-@pytest.mark.parametrize("name", MODEL_REGISTRY.keys())
+@pytest.mark.parametrize(
+    "name",
+    [n for n in MODEL_REGISTRY.keys() if n not in {"lincde", "rfcde"}],
+)
 def test_train_cli_registered_models(name, tmp_path, monkeypatch):
     args = ["--model", name, "--dataset", "dummy", "--epochs", "0", "--batch-size", "2"]
     monkeypatch.chdir(tmp_path)
@@ -41,7 +44,11 @@ def test_evaluate_cli_runs(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize(
     "name",
-    [n for n in MODEL_REGISTRY.keys() if n not in {"ckde", "quantile_rf"}],
+    [
+        n
+        for n in MODEL_REGISTRY.keys()
+        if n not in {"ckde", "quantile_rf", "lincde", "rfcde"}
+    ],
 )
 def test_evaluate_cli_registered_models(name, tmp_path, monkeypatch):
     args = [

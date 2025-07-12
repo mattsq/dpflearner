@@ -6,6 +6,7 @@ from outdist.configs.trainer import TrainerConfig
 from outdist.data.datasets import make_dataset
 from outdist.data.binning import EqualWidthBinning
 from outdist.models import get_model
+import importlib
 
 
 MODEL_CONFIGS = [
@@ -41,6 +42,43 @@ MODEL_CONFIGS = [
             "n_estimators": 5,
             "random_state": 0,
         },
+    ),
+    # Optional models depending on extra packages
+    *(
+        [
+            (
+                "lincde",
+                {
+                    "in_dim": 1,
+                    "start": 0.0,
+                    "end": 1.0,
+                    "n_bins": 10,
+                    "basis": 6,
+                    "trees": 10,
+                },
+            )
+        ]
+        if importlib.util.find_spec("lincde")
+        else []
+    ),
+    *(
+        [
+            (
+                "rfcde",
+                {
+                    "in_dim": 1,
+                    "start": 0.0,
+                    "end": 1.0,
+                    "n_bins": 10,
+                    "bandwidth": 0.1,
+                    "trees": 5,
+                    "kde_basis": 7,
+                    "min_leaf": 2,
+                },
+            )
+        ]
+        if importlib.util.find_spec("rfcde")
+        else []
     ),
     ("evidential", {"in_dim": 1, "n_bins": 10, "hidden_dims": [4, 4]}),
     (

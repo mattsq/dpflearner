@@ -48,6 +48,7 @@ The following model names can be passed to `get_model` or the CLI:
 - `gaussian_ls` – Gaussian location–scale model
 - `mdn` – mixture density network
 - `logistic_mixture` – mixture of logistics
+- `flow` – conditional normalising flow
 - `ckde` – conditional kernel density estimator
 - `quantile_rf` – quantile regression forest
 - `lincde` – tree-based estimator via Lindsey's method
@@ -56,3 +57,24 @@ The following model names can be passed to `get_model` or the CLI:
 
 Additional architectures can register themselves via
 `@register_model("name")` and become instantly available.
+
+## Binning schemes
+
+Utilities in `outdist.data.binning` convert continuous targets to discrete bin
+indices. All schemes inherit from `BinningScheme` which stores monotonically
+increasing bin edges and exposes methods like `to_index` and `centers`.
+Implemented strategies include:
+
+- `EqualWidthBinning` – evenly spaced edges between a start and end value
+- `QuantileBinning` – edges based on quantiles of observed data
+- `BootstrappedUniformBinning` – average uniform bins over bootstrap samples
+- `BootstrappedQuantileBinning` – average quantile bins over bootstrap samples
+
+## Calibration
+
+Optional probability calibration is provided via the classes in
+`outdist.calibration`. Calibrators follow a small registry similar to models and
+are trained on held-out validation data by `Trainer` when a
+`CalibratorConfig` is supplied. The built-in
+`DirichletCalibrator` implements the method of Kull et&nbsp;al.&nbsp;2019 for
+adjusting predicted categorical probabilities.

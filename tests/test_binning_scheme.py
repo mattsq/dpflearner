@@ -5,6 +5,8 @@ from outdist.data.binning import (
     QuantileBinning,
     BootstrappedUniformBinning,
     BootstrappedQuantileBinning,
+    FreedmanDiaconisBinning,
+    BootstrappedFreedmanDiaconisBinning,
     KMeansBinning,
     BootstrappedKMeansBinning,
 )
@@ -57,3 +59,40 @@ def test_bootstrap_kmeans_binning_edges_shape():
     data = torch.randn(50)
     scheme = BootstrappedKMeansBinning(data, n_bins=3, n_bootstrap=2, random_state=0)
     assert scheme.edges.numel() == 4
+
+
+def test_freedman_diaconis_binning_edges():
+    data = torch.arange(10, dtype=torch.float)
+    scheme = FreedmanDiaconisBinning(data)
+    q1, q3 = torch.quantile(data, torch.tensor([0.25, 0.75]))
+    iqr = q3 - q1
+    h = 2 * iqr / (len(data) ** (1 / 3))
+    expected = torch.arange(data.min(), data.max() + h, h)
+    expected[-1] = data.max()
+    assert torch.allclose(scheme.edges, expected)
+
+
+def test_bootstrap_freedman_diaconis_binning_edges():
+    torch.manual_seed(0)
+    data = torch.arange(10, dtype=torch.float)
+    starts = []
+    ends = []
+    hs = []
+    n = len(data)
+    for _ in range(2):
+        idx = torch.randint(0, n, (n,))
+        sample = data[idx]
+        q1, q3 = torch.quantile(sample, torch.tensor([0.25, 0.75]))
+        iqr = q3 - q1
+        h = 2 * iqr / (n ** (1 / 3))
+        starts.append(sample.min())
+        ends.append(sample.max())
+        hs.append(h)
+    start = torch.stack(starts).mean()
+    end = torch.stack(ends).mean()
+    h = torch.stack(hs).mean()
+    expected = torch.arange(start, end + h, h)
+    expected[-1] = end
+    torch.manual_seed(0)
+    scheme = BootstrappedFreedmanDiaconisBinning(data, n_bootstrap=2)
+    assert torch.allclose(scheme.edges, expected)

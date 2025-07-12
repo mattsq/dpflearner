@@ -14,6 +14,8 @@ __all__ = [
     "QuantileBinning",
     "BootstrappedUniformBinning",
     "BootstrappedQuantileBinning",
+    "KMeansBinning",
+    "BootstrappedKMeansBinning",
     "LearnableBinningScheme",
 ]
 
@@ -111,6 +113,44 @@ class BootstrappedQuantileBinning(BinningScheme):
             idx = torch.randint(0, n, (n,), device=data.device)
             sample = data[idx]
             edges = torch.quantile(sample, probs)
+            edges_list.append(edges)
+        mean_edges = torch.stack(edges_list).mean(dim=0)
+        super().__init__(edges=mean_edges)
+
+
+def _kmeans_edges(data: torch.Tensor, n_bins: int, *, random_state: int | None = None) -> torch.Tensor:
+    """Return k-means edges for ``data`` with ``n_bins`` clusters."""
+
+    from sklearn.cluster import KMeans
+
+    data_np = data.detach().cpu().numpy().reshape(-1, 1)
+    km = KMeans(n_clusters=n_bins, random_state=random_state, n_init="auto")
+    km.fit(data_np)
+    centers = torch.tensor(km.cluster_centers_.flatten(), device=data.device, dtype=data.dtype)
+    centers, _ = torch.sort(centers)
+    mids = 0.5 * (centers[1:] + centers[:-1])
+    return torch.cat([data.min().unsqueeze(0), mids, data.max().unsqueeze(0)])
+
+
+class KMeansBinning(BinningScheme):
+    """Bins based on 1-D k-means clusters of ``data``."""
+
+    def __init__(self, data: torch.Tensor, n_bins: int, *, random_state: int | None = None) -> None:
+        edges = _kmeans_edges(data.flatten(), n_bins, random_state=random_state)
+        super().__init__(edges=edges)
+
+
+class BootstrappedKMeansBinning(BinningScheme):
+    """Average k-means bins over bootstrap resamples of ``data``."""
+
+    def __init__(self, data: torch.Tensor, n_bins: int, n_bootstrap: int = 10, *, random_state: int | None = None) -> None:
+        data = data.flatten()
+        n = data.numel()
+        edges_list = []
+        for _ in range(n_bootstrap):
+            idx = torch.randint(0, n, (n,), device=data.device)
+            sample = data[idx]
+            edges = _kmeans_edges(sample, n_bins, random_state=random_state)
             edges_list.append(edges)
         mean_edges = torch.stack(edges_list).mean(dim=0)
         super().__init__(edges=mean_edges)

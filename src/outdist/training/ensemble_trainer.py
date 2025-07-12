@@ -11,6 +11,7 @@ from ..configs.trainer import TrainerConfig
 from ..configs.model import ModelConfig
 from ..data.binning import BinningScheme, LearnableBinningScheme
 from .trainer import Trainer
+from .logger import TrainingLogger
 from ..ensembles.average import AverageEnsemble
 from ..ensembles.stacked import StackedEnsemble, learn_weights
 from ..data import binning as binning_scheme
@@ -80,6 +81,7 @@ class EnsembleTrainer:
         device: str | None = None,
         stack: bool = False,
         stack_cfg: dict | None = None,
+        logger: TrainingLogger | None = None,
     ) -> None:
         self.model_cfgs = model_cfgs
         self.trainer_cfg = trainer_cfg
@@ -89,6 +91,7 @@ class EnsembleTrainer:
         self.device = device or trainer_cfg.device
         self.stack = stack
         self.stack_cfg = stack_cfg or {}
+        self.logger = logger
 
     # ------------------------------------------------------------------
     def _align_binning(self, models: List[Any]) -> List[Any]:
@@ -149,7 +152,7 @@ class EnsembleTrainer:
 
         tr_cfg = copy.deepcopy(self.trainer_cfg)
         tr_cfg.device = self.device
-        trainer = Trainer(tr_cfg)
+        trainer = Trainer(tr_cfg, logger=self.logger)
         ckpt = trainer.fit(model, binning, subset, val_ds)
         return ckpt.model
 

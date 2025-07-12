@@ -14,6 +14,7 @@ from ..metrics import METRICS_REGISTRY
 from ..losses import cross_entropy, evidential_loss
 from ..data import binning as binning_scheme
 from ..calibration import get_calibrator, BaseCalibrator
+from .logger import TrainingLogger
 
 
 @dataclass
@@ -35,12 +36,14 @@ class Trainer:
         calibrator_cfg: CalibratorConfig | None = None,
         *,
         loss_fn=cross_entropy,
+        logger: TrainingLogger | None = None,
     ) -> None:
         self.cfg = cfg
         self.device = torch.device(cfg.device)
         self.loss_fn = loss_fn
         self.calibrator_cfg = calibrator_cfg
         self.calibrator: Optional[BaseCalibrator] = None
+        self.logger = logger
 
     # ------------------------------------------------------------------
     # Training
@@ -91,8 +94,10 @@ class Trainer:
         )
 
         for epoch in range(1, self.cfg.max_epochs + 1):
+            if self.logger is not None:
+                self.logger.start_epoch(epoch, len(train_loader))
             model.train()
-            for batch in train_loader:
+            for batch_idx, batch in enumerate(train_loader):
                 x, y = batch
                 x = x.to(self.device)
                 y = y.to(self.device)
@@ -112,9 +117,13 @@ class Trainer:
                 if optimizer is not None:
                     loss.backward()
                     optimizer.step()
+                if self.logger is not None:
+                    self.logger.log_batch(batch_idx, float(loss.item()))
 
             if val_loader is not None:
                 self._run_validation(model, val_loader)
+            if self.logger is not None:
+                self.logger.end_epoch(epoch)
 
         # Fit calibrator on validation data if requested
         if self.calibrator_cfg is not None and val_loader is not None:

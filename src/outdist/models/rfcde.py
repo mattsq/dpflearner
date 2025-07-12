@@ -9,6 +9,7 @@ from torch import nn
 from .base import BaseModel
 from ..configs.model import ModelConfig
 from . import register_model
+from ..data import binning as binning_scheme
 
 try:
     from rfcde import RFCDE  # type: ignore
@@ -30,6 +31,8 @@ class RFCDEModel(BaseModel):
         trees: int = 500,
         kde_basis: int = 31,
         min_leaf: int = 5,
+        *,
+        binner: binning_scheme.BinningScheme | None = None,
     ) -> None:
         super().__init__()
         if RFCDE is None:  # pragma: no cover - dependency not installed
@@ -41,8 +44,10 @@ class RFCDEModel(BaseModel):
             node_size=min_leaf,
             n_basis=kde_basis,
         )
-        edges = torch.linspace(start, end, n_bins + 1)
-        self.register_buffer("bin_edges", edges)
+        if binner is None:
+            edges = torch.linspace(start, end, n_bins + 1)
+            binner = binning_scheme.BinningScheme(edges=edges)
+        self.binner = binner
 
     # ------------------------------------------------------------------
     def fit(self, x: torch.Tensor, y: torch.Tensor) -> "RFCDEModel":
@@ -55,7 +60,7 @@ class RFCDEModel(BaseModel):
         if getattr(self.model, "z_train", None) is None:
             raise RuntimeError("Model must be fitted before calling forward")
         x_np = x.detach().cpu().double().numpy()
-        grid = self.bin_edges.cpu().double().numpy()
+        grid = self.binner.edges.cpu().double().numpy()
         pdf = self.model.predict(x_np, grid, bandwidth=self.bandwidth)
         diff = np.diff(grid)
         cdf = np.concatenate([np.zeros((pdf.shape[0], 1)), np.cumsum(0.5 * (pdf[:, :-1] + pdf[:, 1:]) * diff, axis=1)], axis=1)

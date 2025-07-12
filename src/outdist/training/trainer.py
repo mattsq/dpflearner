@@ -64,6 +64,10 @@ class Trainer:
         if targets:
             y_all = torch.cat(targets)
             binning.fit(y_all)
+            if isinstance(binning, binning_scheme.LearnableBinningScheme) and not isinstance(model, nn.Module):
+                raise TypeError("Learnable bins require model to be an nn.Module")
+            if hasattr(model, "binner"):
+                model.binner = binning
             if hasattr(model, "fit"):
                 x_all = torch.cat(features)
                 model.fit(x_all.to(self.device), y_all.to(self.device))

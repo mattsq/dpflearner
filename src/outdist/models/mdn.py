@@ -12,6 +12,7 @@ from .base import BaseModel
 from ..configs.model import ModelConfig
 from ..utils import make_mlp
 from . import register_model
+from ..data import binning as binning_scheme
 
 
 @register_model("mdn")
@@ -26,14 +27,18 @@ class MixtureDensityNetwork(BaseModel):
         n_bins: int = 10,
         n_components: int = 3,
         hidden_dims: int | Sequence[int] = (32, 32),
+        *,
+        binner: binning_scheme.BinningScheme | None = None,
     ) -> None:
         super().__init__()
         self.n_components = n_components
         # Network outputs mixture weights, means and log stds
         out_dim = n_components * 3
         self.net = make_mlp(in_dim, out_dim, hidden_dims)
-        edges = torch.linspace(start, end, n_bins + 1)
-        self.register_buffer("bin_edges", edges)
+        if binner is None:
+            edges = torch.linspace(start, end, n_bins + 1)
+            binner = binning_scheme.BinningScheme(edges=edges)
+        self.binner = binner
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         params = self.net(x)
@@ -42,7 +47,7 @@ class MixtureDensityNetwork(BaseModel):
         weights = torch.softmax(logits, dim=-1)
         stds = log_stds.exp()
 
-        edges = self.bin_edges
+        edges = self.binner.edges.to(x)
         z = (edges.unsqueeze(0).unsqueeze(-1) - means.unsqueeze(1)) / (
             stds.unsqueeze(1) * math.sqrt(2)
         )

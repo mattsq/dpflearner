@@ -9,6 +9,7 @@ from torch import nn
 from .base import BaseModel
 from ..configs.model import ModelConfig
 from . import register_model
+from ..data import binning as binning_scheme
 
 try:
     from lincde import LinCDE  # type: ignore
@@ -30,12 +31,16 @@ class LinCDEModel(BaseModel):
         trees: int = 400,
         lr: float = 0.05,
         depth: int = 3,
+        *,
+        binner: binning_scheme.BinningScheme | None = None,
     ) -> None:
         super().__init__()
         if LinCDE is None:  # pragma: no cover - dependency not installed
             raise ImportError("LinCDE package is required for LinCDEModel")
-        edges = torch.linspace(start, end, n_bins + 1)
-        self.register_buffer("bin_edges", edges)
+        if binner is None:
+            edges = torch.linspace(start, end, n_bins + 1)
+            binner = binning_scheme.BinningScheme(edges=edges)
+        self.binner = binner
         self.y_grid = np.linspace(start, end, basis)
         self.model = LinCDE(
             basis="bspline",
@@ -60,7 +65,7 @@ class LinCDEModel(BaseModel):
         density = logf.exp()
         cdf_basis = torch.cumsum(density, dim=1)
         idx = torch.bucketize(
-            self.bin_edges.detach().cpu(),
+            self.binner.edges.detach().cpu(),
             torch.from_numpy(self.model.y_grid_),
         )
         cdf_edges = cdf_basis[:, idx]

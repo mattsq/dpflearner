@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Tuple
 
 import torch
+from torch import nn
 
 __all__ = [
     "BinningScheme",
@@ -13,6 +14,7 @@ __all__ = [
     "QuantileBinning",
     "BootstrappedUniformBinning",
     "BootstrappedQuantileBinning",
+    "LearnableBinningScheme",
 ]
 
 
@@ -112,3 +114,36 @@ class BootstrappedQuantileBinning(BinningScheme):
             edges_list.append(edges)
         mean_edges = torch.stack(edges_list).mean(dim=0)
         super().__init__(edges=mean_edges)
+
+
+class LearnableBinningScheme(BinningScheme, nn.Module):
+    """Binning scheme with trainable cut-points."""
+
+    __hash__ = nn.Module.__hash__
+
+    def __init__(self, n_bins: int, y_min: float, y_max: float, init: str = "uniform") -> None:
+        nn.Module.__init__(self)
+        self.y_min = float(y_min)
+        self.y_max = float(y_max)
+        if init != "uniform":
+            raise ValueError(f"Unknown init '{init}'")
+        self.logits = nn.Parameter(torch.zeros(n_bins - 1))
+
+    # ------------------------------------------------------------------
+    @property
+    def edges(self) -> torch.Tensor:  # type: ignore[override]
+        widths = torch.softmax(self.logits, dim=0)
+        cumsum = torch.cumsum(widths, dim=0)
+        e_inner = self.y_min + (self.y_max - self.y_min) * cumsum
+        device = self.logits.device
+        dtype = self.logits.dtype
+        return torch.cat(
+            [
+                torch.tensor([self.y_min], device=device, dtype=dtype),
+                e_inner,
+                torch.tensor([self.y_max], device=device, dtype=dtype),
+            ]
+        )
+
+    def fit(self, data: torch.Tensor) -> "LearnableBinningScheme":  # type: ignore[override]
+        return self

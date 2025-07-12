@@ -5,6 +5,7 @@ from __future__ import annotations
 from .models import get_model, register_model  # re-exported for convenience
 from .training.trainer import Trainer
 from .training.ensemble_trainer import EnsembleTrainer
+from .training.logger import TrainingLogger, ConsoleLogger
 from .ensembles.average import AverageEnsemble
 from .ensembles.stacked import StackedEnsemble
 from .data.datasets import make_dataset
@@ -18,6 +19,8 @@ __all__ = [
     "register_calibrator",
     "Trainer",
     "EnsembleTrainer",
+    "TrainingLogger",
+    "ConsoleLogger",
     "AverageEnsemble",
     "StackedEnsemble",
     "make_dataset",

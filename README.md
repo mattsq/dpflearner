@@ -67,8 +67,6 @@ Implemented strategies include:
 
 - `EqualWidthBinning` – evenly spaced edges between a start and end value
 - `QuantileBinning` – edges based on quantiles of observed data
-- `BootstrappedUniformBinning` – average uniform bins over bootstrap samples
-- `BootstrappedQuantileBinning` – average quantile bins over bootstrap samples
 
 ## Calibration
 

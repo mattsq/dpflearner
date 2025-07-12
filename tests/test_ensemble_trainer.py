@@ -8,6 +8,7 @@ from outdist.configs.trainer import TrainerConfig
 from outdist.configs.model import ModelConfig
 from outdist.data.datasets import make_dataset
 from outdist.data.binning import EqualWidthBinning
+from outdist.data.binning import LearnableBinningScheme
 from outdist.models import get_model
 from outdist.ensembles.average import AverageEnsemble
 
@@ -137,3 +138,13 @@ def test_stacked_ensemble_trainer_runs() -> None:
     assert isinstance(ensemble, StackedEnsemble)
     assert len(ensemble.models) == 2
     assert torch.isclose(ensemble.weights.sum(), torch.tensor(1.0), atol=1e-5)
+
+
+def test_ensemble_trainer_rejects_bootstrap_with_learnable_bins() -> None:
+    model_cfgs = [ModelConfig(name="mlp", params={"in_dim": 1, "out_dim": 10, "hidden_dims": [4]})]
+    train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
+    binning = LearnableBinningScheme(5, 0.0, 1.0)
+    trainer_cfg = TrainerConfig(max_epochs=0, batch_size=4)
+    ens_trainer = EnsembleTrainer(model_cfgs, trainer_cfg, bootstrap=True, n_jobs=1)
+    with pytest.raises(ValueError):
+        _ = ens_trainer.fit(binning, train_ds, val_ds)

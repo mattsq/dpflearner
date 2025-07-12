@@ -1,6 +1,7 @@
 import torch
+import pytest
 from outdist.cli import train, evaluate
-from outdist.models import BaseModel, register_model
+from outdist.models import BaseModel, register_model, MODEL_REGISTRY
 from outdist.configs.model import ModelConfig
 
 
@@ -25,13 +26,33 @@ def test_train_cli_runs(tmp_path, monkeypatch):
     train.main(args)
 
 
-def test_train_cli_ckde(tmp_path, monkeypatch):
-    args = ["--model", "ckde", "--dataset", "dummy", "--epochs", "0", "--batch-size", "2"]
+@pytest.mark.parametrize("name", MODEL_REGISTRY.keys())
+def test_train_cli_registered_models(name, tmp_path, monkeypatch):
+    args = ["--model", name, "--dataset", "dummy", "--epochs", "0", "--batch-size", "2"]
     monkeypatch.chdir(tmp_path)
     train.main(args)
 
 
 def test_evaluate_cli_runs(tmp_path, monkeypatch):
     args = ["--model", "dummy_cli", "--dataset", "dummy", "--batch-size", "2", "--metrics", "nll"]
+    monkeypatch.chdir(tmp_path)
+    evaluate.main(args)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [n for n in MODEL_REGISTRY.keys() if n not in {"ckde", "quantile_rf"}],
+)
+def test_evaluate_cli_registered_models(name, tmp_path, monkeypatch):
+    args = [
+        "--model",
+        name,
+        "--dataset",
+        "dummy",
+        "--batch-size",
+        "2",
+        "--metrics",
+        "nll",
+    ]
     monkeypatch.chdir(tmp_path)
     evaluate.main(args)

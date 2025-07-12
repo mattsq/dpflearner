@@ -51,6 +51,8 @@ class Trainer:
         binning: binning_scheme.BinningScheme,
         train_ds: Dataset,
         val_ds: Optional[Dataset] = None,
+        *,
+        conformal_cfg: dict | None = None,
     ) -> Checkpoint:
         """Train ``model`` on ``train_ds`` and optionally ``val_ds``."""
 
@@ -130,6 +132,36 @@ class Trainer:
                 self.calibrator_cfg, n_bins=val_probs.size(1)
             )
             self.calibrator.fit(val_probs, val_labels)
+
+        # Optional conformalisation on a calibration split
+        if conformal_cfg is not None:
+            from outdist.conformal import CHCDSConformal
+            split = conformal_cfg.get("split", 0.2)
+            alpha = conformal_cfg.get("alpha", 0.1)
+            tau = conformal_cfg.get("tau", 1 - alpha)
+            mode = conformal_cfg.get("mode", "sub")
+
+            if val_ds is None:
+                m = int(len(train_ds) * split)
+                idx = list(range(len(train_ds) - m, len(train_ds)))
+                cal_loader = DataLoader(
+                    torch.utils.data.Subset(train_ds, idx),
+                    batch_size=self.cfg.batch_size,
+                )
+            else:
+                cal_loader = DataLoader(val_ds, batch_size=self.cfg.batch_size)
+
+            X_c: List[torch.Tensor] = []
+            y_c: List[torch.Tensor] = []
+            for xb, yb in cal_loader:
+                X_c.append(xb)
+                y_c.append(yb)
+            X_c = torch.cat(X_c)
+            y_c = torch.cat(y_c)
+
+            adapter = CHCDSConformal(model, tau=tau, mode=mode)
+            adapter.calibrate(X_c, y_c, alpha)
+            model = adapter
 
         return Checkpoint(
             model=model,

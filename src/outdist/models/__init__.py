@@ -39,4 +39,5 @@ def get_model(cfg: ModelConfig | str, **kwargs) -> BaseModel:
 # ------------------------------------------------------------------
 # Import built-in model implementations so they register themselves
 from . import mlp  # noqa: F401
+from . import logistic_regression  # noqa: F401
 

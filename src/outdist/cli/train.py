@@ -11,6 +11,7 @@ from ..data.datasets import make_dataset
 from ..data.binning import EqualWidthBinning
 from ..models import get_model
 from ..training.trainer import Trainer
+from ..training.logger import ConsoleLogger
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -30,6 +31,17 @@ def main(argv: list[str] | None = None) -> None:
         "--batch-size", type=int, default=32, help="Batch size for training"
     )
     parser.add_argument(
+        "--lr",
+        type=float,
+        default=1e-3,
+        help="Learning rate (default: 1e-3)",
+    )
+    parser.add_argument(
+        "--device",
+        default="cpu",
+        help="Torch device for training (default: cpu)",
+    )
+    parser.add_argument(
         "--calibrate",
         choices=["dirichlet"],
         help="Optional calibration method",
@@ -40,6 +52,37 @@ def main(argv: list[str] | None = None) -> None:
         default=1e-3,
         help="L2 regularisation for Dirichlet calibration",
     )
+    parser.add_argument(
+        "--bootstrap-bins",
+        action="store_true",
+        help="Average bin edges over bootstrap resamples",
+    )
+    parser.add_argument(
+        "--n-bin-bootstraps",
+        type=int,
+        default=10,
+        help="Number of bootstrap draws for binning (default: 10)",
+    )
+    parser.add_argument(
+        "--conformal-alpha",
+        type=float,
+        help="Alpha level for conformal intervals",
+    )
+    parser.add_argument(
+        "--conformal-split",
+        type=float,
+        help="Fraction of training data for calibration split",
+    )
+    parser.add_argument(
+        "--conformal-tau",
+        type=float,
+        help="CHCDSConformal tau parameter",
+    )
+    parser.add_argument(
+        "--conformal-mode",
+        choices=["sub", "div"],
+        help="CHCDSConformal scoring mode",
+    )
 
     args = parser.parse_args(argv)
 
@@ -49,13 +92,41 @@ def main(argv: list[str] | None = None) -> None:
         if args.calibrate
         else None
     )
-    trainer = Trainer(
-        TrainerConfig(batch_size=args.batch_size, max_epochs=args.epochs),
-        calibrator_cfg=calib_cfg,
+    cfg = TrainerConfig(
+        batch_size=args.batch_size,
+        max_epochs=args.epochs,
+        lr=args.lr,
+        device=args.device,
     )
+    trainer = Trainer(
+        cfg,
+        calibrator_cfg=calib_cfg,
+        logger=ConsoleLogger(),
+        bootstrap_bins=args.bootstrap_bins,
+        n_bin_bootstraps=args.n_bin_bootstraps,
+    )
+    conformal_cfg = None
+    if any(
+        v is not None
+        for v in (
+            args.conformal_alpha,
+            args.conformal_split,
+            args.conformal_tau,
+            args.conformal_mode,
+        )
+    ):
+        conformal_cfg = {}
+        if args.conformal_alpha is not None:
+            conformal_cfg["alpha"] = args.conformal_alpha
+        if args.conformal_split is not None:
+            conformal_cfg["split"] = args.conformal_split
+        if args.conformal_tau is not None:
+            conformal_cfg["tau"] = args.conformal_tau
+        if args.conformal_mode is not None:
+            conformal_cfg["mode"] = args.conformal_mode
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
     model = get_model(ModelConfig(name=args.model))
-    trainer.fit(model, binning, train_ds, val_ds)
+    trainer.fit(model, binning, train_ds, val_ds, conformal_cfg=conformal_cfg)
 
 
 if __name__ == "__main__":  # pragma: no cover - manual invocation

@@ -131,7 +131,7 @@ def test_model_can_train_with_trainer(name: str, kwargs: dict) -> None:
         train_ds, val_ds = torch.utils.data.random_split(dataset, [16, 4])
         trainer = Trainer(TrainerConfig(max_epochs=1, batch_size=4), loss_fn=None)
     else:
-        train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
+        train_ds, val_ds, _ = make_dataset("synthetic", n_samples=20)
         trainer = Trainer(TrainerConfig(max_epochs=1, batch_size=4))
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
     model = get_model(name, **kwargs)

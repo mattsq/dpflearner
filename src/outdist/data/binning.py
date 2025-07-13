@@ -163,10 +163,10 @@ class LearnableBinningScheme(BinningScheme, nn.Module):
 
     __hash__ = nn.Module.__hash__
 
-    def __init__(self, n_bins: int, y_min: float, y_max: float, init: str = "uniform") -> None:
+    def __init__(self, start: float, end: float, n_bins: int, init: str = "uniform") -> None:
         nn.Module.__init__(self)
-        self.y_min = float(y_min)
-        self.y_max = float(y_max)
+        self.start = float(start)
+        self.end = float(end)
         if init != "uniform":
             raise ValueError(f"Unknown init '{init}'")
         self.logits = nn.Parameter(torch.zeros(n_bins - 1))
@@ -176,14 +176,14 @@ class LearnableBinningScheme(BinningScheme, nn.Module):
     def edges(self) -> torch.Tensor:  # type: ignore[override]
         widths = torch.softmax(self.logits, dim=0)
         cumsum = torch.cumsum(widths, dim=0)
-        e_inner = self.y_min + (self.y_max - self.y_min) * cumsum
+        e_inner = self.start + (self.end - self.start) * cumsum
         device = self.logits.device
         dtype = self.logits.dtype
         return torch.cat(
             [
-                torch.tensor([self.y_min], device=device, dtype=dtype),
+                torch.tensor([self.start], device=device, dtype=dtype),
                 e_inner,
-                torch.tensor([self.y_max], device=device, dtype=dtype),
+                torch.tensor([self.end], device=device, dtype=dtype),
             ]
         )
 

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Callable, Tuple
+
+import random
 
 import torch
 from torch.utils.data import Dataset, TensorDataset, random_split
@@ -10,18 +12,30 @@ from torch.utils.data import Dataset, TensorDataset, random_split
 __all__ = ["make_dataset"]
 
 
-def make_dataset(name: str, *, n_samples: int = 100, splits: Tuple[float, float, float] = (0.8, 0.1, 0.1)) -> tuple[Dataset, Dataset, Dataset]:
+def make_dataset(
+    name: str,
+    *,
+    n_samples: int = 100,
+    splits: Tuple[float, float, float] = (0.8, 0.1, 0.1),
+    n_features: int = 1,
+    noise: float = 0.1,
+) -> tuple[Dataset, Dataset, Dataset]:
     """Return train/val/test splits for the requested dataset.
 
     Parameters
     ----------
     name:
-        Identifier of the dataset to create. Currently only ``"dummy"`` is
-        supported and yields randomly generated data.
+        Identifier of the dataset to create. ``"dummy"`` yields random
+        classification data while ``"synthetic"`` creates a continuous
+        regression target.
     n_samples:
-        Total number of samples to generate. Only used for ``"dummy"``.
+        Total number of samples to generate.
     splits:
         Fractions for train/val/test. Must sum to 1.
+    n_features:
+        Number of continuous input features for ``"synthetic"``.
+    noise:
+        Standard deviation of Gaussian noise added to the target.
     """
 
     if not torch.isclose(torch.tensor(sum(splits)), torch.tensor(1.0)):
@@ -30,6 +44,20 @@ def make_dataset(name: str, *, n_samples: int = 100, splits: Tuple[float, float,
     if name == "dummy":
         x = torch.randn(n_samples, 1)
         y = torch.randint(0, 10, (n_samples,))
+        dataset = TensorDataset(x, y)
+    elif name == "synthetic":
+        x = torch.randn(n_samples, n_features)
+        funcs: list[Callable[[torch.Tensor], torch.Tensor]] = [
+            lambda t: t,
+            lambda t: -t,
+            torch.sin,
+            torch.cos,
+            torch.exp,
+            lambda t: 1.0 / (t + 1e-2),
+        ]
+        chosen = [random.choice(funcs) for _ in range(n_features)]
+        y = sum(f(x[:, i]) for i, f in enumerate(chosen))
+        y = y + noise * torch.randn(n_samples)
         dataset = TensorDataset(x, y)
     else:
         raise ValueError(f"Unknown dataset: {name}")

@@ -56,7 +56,7 @@ def test_trainer_fits_binning_before_training():
 def test_trainer_accepts_learnable_bins():
     train_ds, val_ds, _ = make_dataset("dummy", n_samples=10)
     trainer = Trainer(TrainerConfig(max_epochs=0))
-    binner = LearnableBinningScheme(5, 0.0, 1.0)
+    binner = LearnableBinningScheme(0.0, 1.0, 5)
     model = DummyModel(n_bins=5)
     trainer.fit(model, binner, train_ds, val_ds)
     assert isinstance(model.binner, LearnableBinningScheme)
@@ -65,7 +65,7 @@ def test_trainer_accepts_learnable_bins():
 def test_trainer_rejects_learnable_bins_for_nonmodule():
     train_ds, val_ds, _ = make_dataset("dummy", n_samples=10)
     trainer = Trainer(TrainerConfig(max_epochs=0))
-    binner = LearnableBinningScheme(5, 0.0, 1.0)
+    binner = LearnableBinningScheme(0.0, 1.0, 5)
     model = PlainModel()
     with pytest.raises(TypeError):
         trainer.fit(model, binner, train_ds, val_ds)

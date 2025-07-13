@@ -10,8 +10,15 @@ __all__ = ["cross_entropy", "evidential_loss"]
 
 
 def cross_entropy(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-    """Return cross-entropy loss for ``logits`` and ``targets``."""
+    """Return cross-entropy loss for ``logits`` and ``targets``.
 
+    ``torch.nn.functional.cross_entropy`` expects integer class labels, so
+    targets are converted to ``long`` if required.  This allows passing
+    floating point tensors representing discrete indices.
+    """
+
+    if targets.dtype != torch.long:
+        targets = targets.long()
     return F.cross_entropy(logits, targets)
 
 

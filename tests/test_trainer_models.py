@@ -80,7 +80,7 @@ MODEL_CONFIGS = [
         if importlib.util.find_spec("rfcde")
         else []
     ),
-    ("evidential", {"in_dim": 1, "n_bins": 10, "hidden_dims": [4, 4]}),
+    ("evidential", {"in_dim": 1, "start": 0.0, "end": 1.0, "n_bins": 10, "hidden_dims": [4, 4]}),
     (
         "flow",
         {

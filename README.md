@@ -87,6 +87,26 @@ Implemented strategies include:
 
 Optional probability calibration is implemented in `outdist.calibration`. Calibrators follow a small registry similar to models and are trained on held-out validation data when a `CalibratorConfig` is provided. The included `DirichletCalibrator` implements the method of Kull et al. 2019.
 
+```python
+from outdist import get_model, Trainer, make_dataset, ConsoleLogger
+from outdist.configs.trainer import TrainerConfig
+from outdist.configs.calibration import CalibratorConfig
+from outdist.data.binning import EqualWidthBinning
+
+train_ds, val_ds, test_ds = make_dataset("synthetic", n_samples=200)
+model = get_model("mlp", in_dim=1, n_bins=10)
+binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
+
+trainer = Trainer(
+    TrainerConfig(max_epochs=5, batch_size=32),
+    calibrator_cfg=CalibratorConfig(name="dirichlet"),
+    logger=ConsoleLogger(),
+)
+ckpt = trainer.fit(model, binning, train_ds, val_ds)
+results = trainer.evaluate(ckpt.model, test_ds, metrics=["nll"])
+print(results)
+```
+
 ## Conformal intervals
 
 Passing `conformal_cfg` to `Trainer.fit` wraps the fitted model in a conformal set predictor. The resulting `CHCDSConformal` adapter exposes `contains` and `coverage` utilities.

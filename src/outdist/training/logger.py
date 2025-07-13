@@ -43,7 +43,13 @@ class ConsoleLogger(TrainingLogger):
     """Simple logger that prints batch and epoch statistics to ``stdout``."""
 
     def on_batch_end(self, batch_idx: int, loss: float) -> None:
-        print(f"Batch {batch_idx + 1}/{self.num_batches} loss: {loss:.4f}")
+        is_last = batch_idx + 1 == self.num_batches
+        end = "\n" if is_last else "\r"
+        print(
+            f"Batch {batch_idx + 1}/{self.num_batches} loss: {loss:.4f}",
+            end=end,
+            flush=True,
+        )
 
     def on_epoch_end(self, epoch: int, avg_loss: float) -> None:
         print(f"Epoch {epoch} average loss: {avg_loss:.4f}")

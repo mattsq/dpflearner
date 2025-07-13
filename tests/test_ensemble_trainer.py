@@ -110,6 +110,18 @@ MODEL_CONFIGS = [
             "spline_bins": 4,
         },
     ),
+    (
+        "iqn",
+        {
+            "in_dim": 1,
+            "start": 0.0,
+            "end": 1.0,
+            "n_bins": 10,
+            "hidden": 16,
+            "K_fourier": 8,
+            "layers": 2,
+        },
+    ),
 ]
 
 

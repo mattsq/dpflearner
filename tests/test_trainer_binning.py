@@ -50,7 +50,7 @@ class PlainModel:
 
 
 def test_trainer_fits_binning_before_training():
-    train_ds, val_ds, _ = make_dataset("dummy", n_samples=10)
+    train_ds, val_ds, _ = make_dataset("synthetic", n_samples=10)
     trainer = Trainer(TrainerConfig(max_epochs=0))
     model = DummyModel(n_bins=10)
     binning = DummyBinning()
@@ -59,7 +59,7 @@ def test_trainer_fits_binning_before_training():
 
 
 def test_trainer_accepts_learnable_bins():
-    train_ds, val_ds, _ = make_dataset("dummy", n_samples=10)
+    train_ds, val_ds, _ = make_dataset("synthetic", n_samples=10)
     trainer = Trainer(TrainerConfig(max_epochs=0))
     binner = LearnableBinningScheme(0.0, 1.0, 5)
     model = DummyModel(n_bins=5)
@@ -68,7 +68,7 @@ def test_trainer_accepts_learnable_bins():
 
 
 def test_trainer_rejects_learnable_bins_for_nonmodule():
-    train_ds, val_ds, _ = make_dataset("dummy", n_samples=10)
+    train_ds, val_ds, _ = make_dataset("synthetic", n_samples=10)
     trainer = Trainer(TrainerConfig(max_epochs=0))
     binner = LearnableBinningScheme(0.0, 1.0, 5)
     model = PlainModel()
@@ -77,7 +77,7 @@ def test_trainer_rejects_learnable_bins_for_nonmodule():
 
 
 def test_trainer_accepts_callable_binning():
-    train_ds, val_ds, _ = make_dataset("dummy", n_samples=10)
+    train_ds, val_ds, _ = make_dataset("synthetic", n_samples=10)
     trainer = Trainer(TrainerConfig(max_epochs=0))
 
     def factory(y: torch.Tensor) -> BinningScheme:
@@ -92,7 +92,7 @@ def test_trainer_accepts_callable_binning():
 
 def test_trainer_bootstraps_binning():
     torch.manual_seed(0)
-    train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
+    train_ds, val_ds, _ = make_dataset("synthetic", n_samples=20)
 
     def factory(y: torch.Tensor) -> BinningScheme:
         return QuantileBinning(y.to(torch.float), 3)
@@ -111,7 +111,7 @@ def test_trainer_bootstraps_binning():
 
 
 def test_trainer_bootstrap_rejects_learnable():
-    train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
+    train_ds, val_ds, _ = make_dataset("synthetic", n_samples=20)
 
     def factory(_y: torch.Tensor) -> LearnableBinningScheme:
         return LearnableBinningScheme(0.0, 1.0, 5)

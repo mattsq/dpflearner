@@ -140,7 +140,7 @@ def test_ensemble_trainer_runs(cfg_pair) -> None:
         ModelConfig(name=name1, params=kwargs1),
         ModelConfig(name=name2, params=kwargs2),
     ]
-    train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
+    train_ds, val_ds, _ = make_dataset("synthetic", n_samples=20)
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
     trainer_cfg = TrainerConfig(max_epochs=1, batch_size=4)
     ens_trainer = EnsembleTrainer(model_cfgs, trainer_cfg, bootstrap=False, n_jobs=1)
@@ -156,7 +156,7 @@ def test_stacked_ensemble_trainer_runs() -> None:
         ),
         ModelConfig(name="logreg", params={"in_dim": 1, "n_bins": 10}),
     ]
-    train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
+    train_ds, val_ds, _ = make_dataset("synthetic", n_samples=20)
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
     trainer_cfg = TrainerConfig(max_epochs=1, batch_size=4)
     ens_trainer = EnsembleTrainer(
@@ -174,7 +174,7 @@ def test_ensemble_trainer_rejects_bootstrap_with_learnable_bins() -> None:
     model_cfgs = [
         ModelConfig(name="mlp", params={"in_dim": 1, "n_bins": 10, "hidden_dims": [4]})
     ]
-    train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
+    train_ds, val_ds, _ = make_dataset("synthetic", n_samples=20)
     binning = LearnableBinningScheme(0.0, 1.0, 5)
     trainer_cfg = TrainerConfig(max_epochs=0, batch_size=4)
     ens_trainer = EnsembleTrainer(model_cfgs, trainer_cfg, bootstrap=True, n_jobs=1)
@@ -194,7 +194,7 @@ def test_ensemble_trainer_aligns_incompatible_bins() -> None:
         ),
     ]
 
-    train_ds, val_ds, _ = make_dataset("dummy", n_samples=40)
+    train_ds, val_ds, _ = make_dataset("synthetic", n_samples=40)
 
     def factory(_y: torch.Tensor) -> LearnableBinningScheme:
         return LearnableBinningScheme(0.0, 1.0, 10)

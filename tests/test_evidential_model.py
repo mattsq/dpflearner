@@ -24,7 +24,7 @@ def test_evidential_loss_uniform_prior():
 
 
 def test_evidential_model_trains():
-    train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
+    train_ds, val_ds, _ = make_dataset("synthetic", n_samples=20)
     trainer = Trainer(TrainerConfig(max_epochs=1, batch_size=4), loss_fn=evidential_loss)
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
     model = get_model("evidential", in_dim=1, n_bins=10, hidden_dims=[4, 4])

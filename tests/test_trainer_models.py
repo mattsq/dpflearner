@@ -10,8 +10,8 @@ import importlib
 
 
 MODEL_CONFIGS = [
-    ("mlp", {"in_dim": 1, "out_dim": 10, "hidden_dims": [4]}),
-    ("logreg", {"in_dim": 1, "out_dim": 10}),
+    ("mlp", {"in_dim": 1, "n_bins": 10, "hidden_dims": [4]}),
+    ("logreg", {"in_dim": 1, "n_bins": 10}),
     ("gaussian_ls", {"in_dim": 1, "start": 0.0, "end": 1.0, "n_bins": 10}),
     (
         "mdn",

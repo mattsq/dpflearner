@@ -14,8 +14,8 @@ from outdist.ensembles.average import AverageEnsemble
 
 # Same set of model configs used in trainer tests
 MODEL_CONFIGS = [
-    ("mlp", {"in_dim": 1, "out_dim": 10, "hidden_dims": [4]}),
-    ("logreg", {"in_dim": 1, "out_dim": 10}),
+    ("mlp", {"in_dim": 1, "n_bins": 10, "hidden_dims": [4]}),
+    ("logreg", {"in_dim": 1, "n_bins": 10}),
     ("gaussian_ls", {"in_dim": 1, "start": 0.0, "end": 1.0, "n_bins": 10}),
     (
         "mdn",
@@ -140,9 +140,9 @@ def test_ensemble_trainer_runs(cfg_pair) -> None:
 def test_stacked_ensemble_trainer_runs() -> None:
     model_cfgs = [
         ModelConfig(
-            name="mlp", params={"in_dim": 1, "out_dim": 10, "hidden_dims": [4]}
+            name="mlp", params={"in_dim": 1, "n_bins": 10, "hidden_dims": [4]}
         ),
-        ModelConfig(name="logreg", params={"in_dim": 1, "out_dim": 10}),
+        ModelConfig(name="logreg", params={"in_dim": 1, "n_bins": 10}),
     ]
     train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
@@ -160,7 +160,7 @@ def test_stacked_ensemble_trainer_runs() -> None:
 
 def test_ensemble_trainer_rejects_bootstrap_with_learnable_bins() -> None:
     model_cfgs = [
-        ModelConfig(name="mlp", params={"in_dim": 1, "out_dim": 10, "hidden_dims": [4]})
+        ModelConfig(name="mlp", params={"in_dim": 1, "n_bins": 10, "hidden_dims": [4]})
     ]
     train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
     binning = LearnableBinningScheme(5, 0.0, 1.0)

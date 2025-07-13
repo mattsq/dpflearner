@@ -14,13 +14,13 @@ from . import register_model
 class LogisticRegression(BaseModel):
     """Linear model mapping ``x`` to logits over discretised outcomes."""
 
-    def __init__(self, in_dim: int = 1, out_dim: int = 10) -> None:
+    def __init__(self, in_dim: int = 1, n_bins: int = 10) -> None:
         super().__init__()
-        self.linear = nn.Linear(in_dim, out_dim)
+        self.linear = nn.Linear(in_dim, n_bins)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.linear(x)
 
     @classmethod
     def default_config(cls) -> ModelConfig:
-        return ModelConfig(name="logreg", params={"in_dim": 1, "out_dim": 10})
+        return ModelConfig(name="logreg", params={"in_dim": 1, "n_bins": 10})

@@ -38,7 +38,7 @@ def test_trainer_fits_and_uses_calibrator():
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
     calib_cfg = CalibratorConfig(name="dummy", params={"factor": 1.0})
     trainer = Trainer(TrainerConfig(max_epochs=1, batch_size=4), calibrator_cfg=calib_cfg)
-    model = get_model("mlp", in_dim=1, out_dim=10, hidden_dims=[4])
+    model = get_model("mlp", in_dim=1, n_bins=10, hidden_dims=[4])
     ckpt = trainer.fit(model, binning, train_ds, val_ds)
     assert isinstance(trainer.calibrator, DummyCalibrator)
     assert trainer.calibrator.fit_called

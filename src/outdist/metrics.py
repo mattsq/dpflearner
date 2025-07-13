@@ -19,6 +19,8 @@ __all__ = ["nll", "accuracy", "METRICS_REGISTRY"]
 def nll(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     """Negative log-likelihood computed via cross-entropy."""
 
+    if targets.dtype != torch.long:
+        targets = targets.long()
     return F.cross_entropy(logits, targets)
 
 

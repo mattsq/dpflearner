@@ -50,6 +50,14 @@ class Trainer:
         self.n_bin_bootstraps = n_bin_bootstraps
 
     # ------------------------------------------------------------------
+    def _to_index(self, model: BaseModel, y: torch.Tensor) -> torch.Tensor:
+        """Convert ``y`` to bin indices if ``model`` defines a binner."""
+
+        if hasattr(model, "binner"):
+            return model.binner.to_index(y)
+        return y
+
+    # ------------------------------------------------------------------
     # Training
     # ------------------------------------------------------------------
     def fit(
@@ -135,7 +143,8 @@ class Trainer:
                 elif self.loss_fn is evidential_loss:
                     loss = self.loss_fn(out["alpha"], y)
                 else:
-                    loss = self.loss_fn(logits, y)
+                    targets = self._to_index(model, y)
+                    loss = self.loss_fn(logits, targets)
                 if optimizer is not None:
                     loss.backward()
                     optimizer.step()
@@ -162,7 +171,7 @@ class Trainer:
                         logits = out.get("logits", out.get("probs").log())
                     probs = logits.softmax(dim=-1).cpu()
                     probs_list.append(probs)
-                    labels_list.append(y)
+                    labels_list.append(self._to_index(model, y))
             val_probs = torch.cat(probs_list)
             val_labels = torch.cat(labels_list)
             self.calibrator = get_calibrator(
@@ -233,7 +242,7 @@ class Trainer:
                 if isinstance(out, dict):
                     logits = out.get("logits", out.get("probs").log())
                 preds.append(logits.cpu())
-                targets.append(y)
+                targets.append(self._to_index(model, y))
 
         y_pred = torch.cat(preds)
         y_true = torch.cat(targets)
@@ -274,7 +283,8 @@ class Trainer:
                 elif self.loss_fn is evidential_loss:
                     _ = self.loss_fn(out["alpha"], y)
                 else:
-                    _ = self.loss_fn(logits, y)
+                    targets = self._to_index(model, y)
+                    _ = self.loss_fn(logits, targets)
 
 
 

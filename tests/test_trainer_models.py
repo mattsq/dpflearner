@@ -139,3 +139,21 @@ def test_model_can_train_with_trainer(name: str, kwargs: dict) -> None:
     ckpt = trainer.fit(model, binning, train_ds, val_ds)
     assert ckpt.epoch == 1
     assert isinstance(ckpt.model, type(model))
+
+
+def test_logistic_mixture_trains_on_continuous_targets() -> None:
+    train_ds, val_ds, _ = make_dataset("synthetic", n_samples=30)
+    trainer = Trainer(TrainerConfig(max_epochs=1, batch_size=4))
+    binning = EqualWidthBinning(0.0, 1.0, n_bins=5)
+    model = get_model(
+        "logistic_mixture",
+        in_dim=1,
+        start=0.0,
+        end=1.0,
+        n_bins=5,
+        n_components=2,
+        hidden_dims=[4],
+    )
+
+    ckpt = trainer.fit(model, binning, train_ds, val_ds)
+    assert ckpt.epoch == 1

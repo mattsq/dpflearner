@@ -141,7 +141,8 @@ class Trainer:
                 elif self.loss_fn is None and hasattr(model, "dsm_loss"):
                     loss = model.dsm_loss(x, y)
                 elif self.loss_fn is evidential_loss:
-                    loss = self.loss_fn(out["alpha"], y)
+                    targets = self._to_index(model, y)
+                    loss = self.loss_fn(out["alpha"], targets)
                 else:
                     targets = self._to_index(model, y)
                     loss = self.loss_fn(logits, targets)
@@ -281,7 +282,8 @@ class Trainer:
                 elif self.loss_fn is None and hasattr(model, "dsm_loss"):
                     _ = model.dsm_loss(x, y)
                 elif self.loss_fn is evidential_loss:
-                    _ = self.loss_fn(out["alpha"], y)
+                    targets = self._to_index(model, y)
+                    _ = self.loss_fn(out["alpha"], targets)
                 else:
                     targets = self._to_index(model, y)
                     _ = self.loss_fn(logits, targets)

@@ -34,7 +34,7 @@ def test_get_calibrator_instantiates_registered_calibrator():
 
 
 def test_trainer_fits_and_uses_calibrator():
-    train_ds, val_ds, test_ds = make_dataset("dummy", n_samples=20)
+    train_ds, val_ds, test_ds = make_dataset("synthetic", n_samples=20)
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
     calib_cfg = CalibratorConfig(name="dummy", params={"factor": 1.0})
     trainer = Trainer(TrainerConfig(max_epochs=1, batch_size=4), calibrator_cfg=calib_cfg)

@@ -71,6 +71,11 @@ Implemented strategies include:
   ```python
   binning = bootstrap(lambda s: QuantileBinning(s, 10).edges, y_train, n_bootstrap=20)
   ```
+  The trainer can perform this automatically:
+  ```python
+  trainer = Trainer(TrainerConfig(max_epochs=5), bootstrap_bins=True, n_bin_bootstraps=20)
+  ckpt = trainer.fit(model, lambda y: QuantileBinning(y, 10), train_ds, val_ds)
+  ```
 
 ## Calibration
 

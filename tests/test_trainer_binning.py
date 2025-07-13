@@ -3,7 +3,12 @@ import pytest
 from outdist.training.trainer import Trainer
 from outdist.configs.trainer import TrainerConfig
 from outdist.data.datasets import make_dataset
-from outdist.data.binning import BinningScheme, LearnableBinningScheme
+from outdist.data.binning import (
+    BinningScheme,
+    LearnableBinningScheme,
+    QuantileBinning,
+    bootstrap,
+)
 from outdist.models import register_model, BaseModel
 from outdist.configs.model import ModelConfig
 
@@ -83,4 +88,36 @@ def test_trainer_accepts_callable_binning():
     model = DummyModel(n_bins=2)
     trainer.fit(model, factory, train_ds, val_ds)
     assert isinstance(model.binner, BinningScheme)
+
+
+def test_trainer_bootstraps_binning():
+    torch.manual_seed(0)
+    train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
+
+    def factory(y: torch.Tensor) -> BinningScheme:
+        return QuantileBinning(y.to(torch.float), 3)
+
+    y_all = torch.stack([y for _, y in train_ds])
+    baseline = factory(y_all).edges
+
+    trainer = Trainer(
+        TrainerConfig(max_epochs=0), bootstrap_bins=True, n_bin_bootstraps=2
+    )
+    torch.manual_seed(0)
+    model = DummyModel(n_bins=3)
+    trainer.fit(model, factory, train_ds, val_ds)
+    assert model.binner.n_bins == 3
+    assert not torch.allclose(model.binner.edges, baseline)
+
+
+def test_trainer_bootstrap_rejects_learnable():
+    train_ds, val_ds, _ = make_dataset("dummy", n_samples=20)
+
+    def factory(_y: torch.Tensor) -> LearnableBinningScheme:
+        return LearnableBinningScheme(0.0, 1.0, 5)
+
+    trainer = Trainer(TrainerConfig(max_epochs=0), bootstrap_bins=True)
+    model = DummyModel(n_bins=5)
+    with pytest.raises(ValueError):
+        trainer.fit(model, factory, train_ds, val_ds)
 

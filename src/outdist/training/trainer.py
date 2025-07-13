@@ -37,6 +37,8 @@ class Trainer:
         *,
         loss_fn=cross_entropy,
         logger: TrainingLogger | None = None,
+        bootstrap_bins: bool = False,
+        n_bin_bootstraps: int = 10,
     ) -> None:
         self.cfg = cfg
         self.device = torch.device(cfg.device)
@@ -44,6 +46,8 @@ class Trainer:
         self.calibrator_cfg = calibrator_cfg
         self.calibrator: Optional[BaseCalibrator] = None
         self.logger = logger
+        self.bootstrap_bins = bootstrap_bins
+        self.n_bin_bootstraps = n_bin_bootstraps
 
     # ------------------------------------------------------------------
     # Training
@@ -69,10 +73,26 @@ class Trainer:
             targets.append(y)
         if targets:
             y_all = torch.cat(targets)
-            if not isinstance(binning, binning_scheme.BinningScheme) and callable(binning):
-                binning = binning(y_all)
+            if self.bootstrap_bins:
+                def strategy(sample: torch.Tensor) -> torch.Tensor:
+                    out = binning(sample) if callable(binning) else binning.fit(sample)
+                    if isinstance(out, binning_scheme.LearnableBinningScheme):
+                        raise ValueError("Bootstrapping incompatible with LearnableBinningScheme")
+                    if isinstance(out, binning_scheme.BinningScheme):
+                        return out.edges
+                    if isinstance(out, torch.Tensor):
+                        return out
+                    raise TypeError("Binning callable must return edges or a BinningScheme")
+
+                binning = binning_scheme.bootstrap(
+                    strategy, y_all, n_bootstrap=self.n_bin_bootstraps
+                )
             else:
-                binning.fit(y_all)  # type: ignore[call-arg]
+                if not isinstance(binning, binning_scheme.BinningScheme) and callable(binning):
+                    binning = binning(y_all)
+                else:
+                    binning.fit(y_all)  # type: ignore[call-arg]
+
             if isinstance(binning, binning_scheme.LearnableBinningScheme) and not isinstance(model, nn.Module):
                 raise TypeError("Learnable bins require model to be an nn.Module")
             if hasattr(model, "binner"):

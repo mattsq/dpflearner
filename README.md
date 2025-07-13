@@ -67,6 +67,10 @@ Implemented strategies include:
 
 - `EqualWidthBinning` – evenly spaced edges between a start and end value
 - `QuantileBinning` – edges based on quantiles of observed data
+- `bootstrap` – averages bin edges across bootstrap resamples
+  ```python
+  binning = bootstrap(lambda s: QuantileBinning(s, 10).edges, y_train, n_bootstrap=20)
+  ```
 
 ## Calibration
 
@@ -76,3 +80,36 @@ are trained on held-out validation data by `Trainer` when a
 `CalibratorConfig` is supplied. The built-in
 `DirichletCalibrator` implements the method of Kull et&nbsp;al.&nbsp;2019 for
 adjusting predicted categorical probabilities.
+
+## Conformal intervals
+
+The trainer can optionally wrap the fitted model in a conformal set predictor.
+Passing ``conformal_cfg`` to :meth:`Trainer.fit` returns a ``CHCDSConformal``
+adapter that offers ``contains`` and ``coverage`` utilities.
+
+```python
+trainer = Trainer(
+    TrainerConfig(max_epochs=5, batch_size=32),
+    calibrator_cfg=CalibratorConfig(name="dirichlet"),
+)
+ckpt = trainer.fit(model, binning, train_ds, val_ds, conformal_cfg={"alpha": 0.1})
+print(ckpt.model.coverage(val_x, val_y))
+```
+
+## Ensembles
+
+`EnsembleTrainer` trains multiple models in parallel and combines them via
+averaging or stacking. Bootstrapping of the training data is enabled by default
+for bagging-style ensembles.
+
+```python
+from outdist.training.ensemble_trainer import EnsembleTrainer
+from outdist.configs.model import ModelConfig
+
+model_cfgs = [
+    ModelConfig(name="mlp", params={"in_dim": 1, "out_dim": 10, "hidden_dims": [4]}),
+    ModelConfig(name="logreg", params={"in_dim": 1, "out_dim": 10}),
+]
+ens_trainer = EnsembleTrainer(model_cfgs, TrainerConfig(max_epochs=5))
+ensemble = ens_trainer.fit(binning, train_ds, val_ds)
+```

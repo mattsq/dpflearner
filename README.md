@@ -1,21 +1,19 @@
 # dpflearner
 
-`outdist` is a small framework for learning discrete probability
- distributions over a continuous outcome. Models predict logits for a
- fixed set of bins and training utilities handle binning, metrics and
- evaluation. The project follows the design sketched in
- [`prompt.md`](prompt.md) and exposes simple APIs for experimentation.
+`outdist` is a small library for modelling discrete distributions over continuous targets. Each model predicts logits for a fixed set of bins while helper classes manage binning, evaluation and experiment management. The design closely follows the outline in [prompt.md](prompt.md).
 
-## Quick start
+## Installation
 
-Install the package in editable mode and run the unit tests:
+Install the package in editable mode and run the tests to ensure everything works:
 
 ```bash
 pip install -e .
 pytest
 ```
 
-A minimal training loop looks like this:
+## Quick start
+
+The snippet below shows a minimal training loop:
 
 ```python
 from outdist import get_model, Trainer, make_dataset
@@ -32,16 +30,18 @@ results = trainer.evaluate(ckpt.model, test_ds, metrics=["nll", "accuracy"])
 print(results)
 ```
 
-You can also use the command line helpers:
+### Command line
+
+Instead of writing Python code you can use the built-in CLI helpers:
 
 ```bash
 python -m outdist.cli.train --model mlp --dataset dummy --epochs 5
 python -m outdist.cli.evaluate --model mlp --dataset dummy --metrics nll accuracy
 ```
 
-## Implemented models
+## Models
 
-The following model names can be passed to `get_model` or the CLI:
+The following identifiers are recognised by `get_model` and the CLI:
 
 - `logreg` – logistic regression baseline
 - `mlp` – multilayer perceptron
@@ -55,14 +55,11 @@ The following model names can be passed to `get_model` or the CLI:
 - `rfcde` – random forest conditional density estimator
 - `evidential` – placeholder for an evidential neural network
 
-Additional architectures can register themselves via
-`@register_model("name")` and become instantly available.
+New architectures can register themselves via `@register_model("name")` and become immediately available.
 
-## Binning schemes
+## Binning strategies
 
-Utilities in `outdist.data.binning` convert continuous targets to discrete bin
-indices. All schemes inherit from `BinningScheme` which stores monotonically
-increasing bin edges and exposes methods like `to_index` and `centers`.
+Utilities in `outdist.data.binning` convert continuous targets to bin indices. Each scheme implements the `BinningScheme` interface with monotonically increasing edges and helpers like `to_index` and `centers`.
 Implemented strategies include:
 
 - `EqualWidthBinning` – evenly spaced edges between a start and end value
@@ -79,18 +76,11 @@ Implemented strategies include:
 
 ## Calibration
 
-Optional probability calibration is provided via the classes in
-`outdist.calibration`. Calibrators follow a small registry similar to models and
-are trained on held-out validation data by `Trainer` when a
-`CalibratorConfig` is supplied. The built-in
-`DirichletCalibrator` implements the method of Kull et&nbsp;al.&nbsp;2019 for
-adjusting predicted categorical probabilities.
+Optional probability calibration is implemented in `outdist.calibration`. Calibrators follow a small registry similar to models and are trained on held-out validation data when a `CalibratorConfig` is provided. The included `DirichletCalibrator` implements the method of Kull et al. 2019.
 
 ## Conformal intervals
 
-The trainer can optionally wrap the fitted model in a conformal set predictor.
-Passing ``conformal_cfg`` to :meth:`Trainer.fit` returns a ``CHCDSConformal``
-adapter that offers ``contains`` and ``coverage`` utilities.
+Passing `conformal_cfg` to `Trainer.fit` wraps the fitted model in a conformal set predictor. The resulting `CHCDSConformal` adapter exposes `contains` and `coverage` utilities.
 
 ```python
 trainer = Trainer(
@@ -103,9 +93,7 @@ print(ckpt.model.coverage(val_x, val_y))
 
 ## Ensembles
 
-`EnsembleTrainer` trains multiple models in parallel and combines them via
-averaging or stacking. Bootstrapping of the training data is enabled by default
-for bagging-style ensembles.
+`EnsembleTrainer` trains several models in parallel and combines them through averaging or stacking. Bootstrapping of the training data is enabled by default for bagging-style ensembles.
 
 ```python
 from outdist.training.ensemble_trainer import EnsembleTrainer

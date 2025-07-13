@@ -20,7 +20,8 @@ from outdist import get_model, Trainer, make_dataset
 from outdist.configs.trainer import TrainerConfig
 from outdist.data.binning import EqualWidthBinning
 
-train_ds, val_ds, test_ds = make_dataset("dummy", n_samples=200)
+# use the built-in dummy classification dataset or a synthetic regression one
+train_ds, val_ds, test_ds = make_dataset("synthetic", n_samples=200, n_features=3)
 model = get_model("mlp", in_dim=1, n_bins=10)
 binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
 
@@ -35,8 +36,8 @@ print(results)
 Instead of writing Python code you can use the built-in CLI helpers:
 
 ```bash
-python -m outdist.cli.train --model mlp --dataset dummy --epochs 5
-python -m outdist.cli.evaluate --model mlp --dataset dummy --metrics nll accuracy
+python -m outdist.cli.train --model mlp --dataset synthetic --epochs 5
+python -m outdist.cli.evaluate --model mlp --dataset synthetic --metrics nll accuracy
 ```
 
 ## Models

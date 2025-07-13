@@ -9,6 +9,7 @@ class DummyModel(BaseModel):
     def __init__(self, n_bins: int = 10):
         super().__init__()
         self.fc = torch.nn.Linear(1, n_bins)
+        self.binner = None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.fc(x)
@@ -19,7 +20,7 @@ class DummyModel(BaseModel):
 
 
 def test_cross_validate_runs():
-    dataset, _, _ = make_dataset("dummy", n_samples=20)
+    dataset, _, _ = make_dataset("synthetic", n_samples=20)
 
     def model_factory():
         return DummyModel(n_bins=10)

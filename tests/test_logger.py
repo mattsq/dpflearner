@@ -24,7 +24,7 @@ class CountingLogger(TrainingLogger):
 
 
 def test_trainer_uses_logger() -> None:
-    train_ds, val_ds, _ = make_dataset("dummy", n_samples=10)
+    train_ds, val_ds, _ = make_dataset("synthetic", n_samples=10)
     logger = CountingLogger()
     trainer = Trainer(TrainerConfig(max_epochs=1, batch_size=4), logger=logger)
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)

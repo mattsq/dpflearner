@@ -20,9 +20,9 @@ class DummyBinning(BinningScheme):
 
 @register_model("trainer_dummy")
 class DummyModel(BaseModel):
-    def __init__(self, out_dim: int = 10):
+    def __init__(self, n_bins: int = 10):
         super().__init__()
-        self.fc = torch.nn.Linear(1, out_dim)
+        self.fc = torch.nn.Linear(1, n_bins)
         self.binner = None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -30,7 +30,7 @@ class DummyModel(BaseModel):
 
     @classmethod
     def default_config(cls) -> ModelConfig:
-        return ModelConfig(name="trainer_dummy", params={"out_dim": 10})
+        return ModelConfig(name="trainer_dummy", params={"n_bins": 10})
 
 
 class PlainModel:
@@ -47,7 +47,7 @@ class PlainModel:
 def test_trainer_fits_binning_before_training():
     train_ds, val_ds, _ = make_dataset("dummy", n_samples=10)
     trainer = Trainer(TrainerConfig(max_epochs=0))
-    model = DummyModel(out_dim=10)
+    model = DummyModel(n_bins=10)
     binning = DummyBinning()
     trainer.fit(model, binning, train_ds, val_ds)
     assert binning.fit_called
@@ -57,7 +57,7 @@ def test_trainer_accepts_learnable_bins():
     train_ds, val_ds, _ = make_dataset("dummy", n_samples=10)
     trainer = Trainer(TrainerConfig(max_epochs=0))
     binner = LearnableBinningScheme(5, 0.0, 1.0)
-    model = DummyModel(out_dim=5)
+    model = DummyModel(n_bins=5)
     trainer.fit(model, binner, train_ds, val_ds)
     assert isinstance(model.binner, LearnableBinningScheme)
 
@@ -80,7 +80,7 @@ def test_trainer_accepts_callable_binning():
         end = float(y.max())
         return BinningScheme(edges=torch.linspace(start, end, 3))
 
-    model = DummyModel(out_dim=2)
+    model = DummyModel(n_bins=2)
     trainer.fit(model, factory, train_ds, val_ds)
     assert isinstance(model.binner, BinningScheme)
 

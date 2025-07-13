@@ -28,7 +28,7 @@ def test_trainer_uses_logger() -> None:
     logger = CountingLogger()
     trainer = Trainer(TrainerConfig(max_epochs=1, batch_size=4), logger=logger)
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
-    model = get_model("logreg", in_dim=1, out_dim=10)
+    model = get_model("logreg", in_dim=1, n_bins=10)
     trainer.fit(model, binning, train_ds, val_ds)
 
     expected_batches = math.ceil(len(train_ds) / trainer.cfg.batch_size)

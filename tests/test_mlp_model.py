@@ -4,7 +4,7 @@ from outdist.models.mlp import MLP
 
 
 def test_mlp_forward_shape():
-    model = get_model("mlp", in_dim=2, out_dim=3, hidden_dims=[4])
+    model = get_model("mlp", in_dim=2, n_bins=3, hidden_dims=[4])
     x = torch.randn(5, 2)
     logits = model(x)
     assert logits.shape == (5, 3)

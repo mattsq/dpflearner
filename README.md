@@ -23,7 +23,7 @@ from outdist.configs.trainer import TrainerConfig
 from outdist.data.binning import EqualWidthBinning
 
 train_ds, val_ds, test_ds = make_dataset("dummy", n_samples=200)
-model = get_model("mlp", in_dim=1, out_dim=10)
+model = get_model("mlp", in_dim=1, n_bins=10)
 binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
 
 trainer = Trainer(TrainerConfig(max_epochs=5, batch_size=32))
@@ -107,8 +107,8 @@ from outdist.training.ensemble_trainer import EnsembleTrainer
 from outdist.configs.model import ModelConfig
 
 model_cfgs = [
-    ModelConfig(name="mlp", params={"in_dim": 1, "out_dim": 10, "hidden_dims": [4]}),
-    ModelConfig(name="logreg", params={"in_dim": 1, "out_dim": 10}),
+    ModelConfig(name="mlp", params={"in_dim": 1, "n_bins": 10, "hidden_dims": [4]}),
+    ModelConfig(name="logreg", params={"in_dim": 1, "n_bins": 10}),
 ]
 ens_trainer = EnsembleTrainer(model_cfgs, TrainerConfig(max_epochs=5))
 ensemble = ens_trainer.fit(binning, train_ds, val_ds)

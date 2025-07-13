@@ -20,11 +20,11 @@ class MLP(BaseModel):
     def __init__(
         self,
         in_dim: int = 1,
-        out_dim: int = 10,
+        n_bins: int = 10,
         hidden_dims: int | Sequence[int] = (32, 32),
     ) -> None:
         super().__init__()
-        self.net = make_mlp(in_dim, out_dim, hidden_dims)
+        self.net = make_mlp(in_dim, n_bins, hidden_dims)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x)
@@ -32,7 +32,7 @@ class MLP(BaseModel):
     @classmethod
     def default_config(cls) -> ModelConfig:
         return ModelConfig(
-            name="mlp", params={"in_dim": 1, "out_dim": 10, "hidden_dims": [32, 32]}
+            name="mlp", params={"in_dim": 1, "n_bins": 10, "hidden_dims": [32, 32]}
         )
 
 

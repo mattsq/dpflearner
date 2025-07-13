@@ -6,23 +6,23 @@ from outdist.data.datasets import make_dataset
 
 @register_model("dummy_eval")
 class DummyModel(BaseModel):
-    def __init__(self, out_dim: int = 10):
+    def __init__(self, n_bins: int = 10):
         super().__init__()
-        self.fc = torch.nn.Linear(1, out_dim)
+        self.fc = torch.nn.Linear(1, n_bins)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.fc(x)
 
     @classmethod
     def default_config(cls) -> ModelConfig:
-        return ModelConfig(name="dummy_eval", params={"out_dim": 10})
+        return ModelConfig(name="dummy_eval", params={"n_bins": 10})
 
 
 def test_cross_validate_runs():
     dataset, _, _ = make_dataset("dummy", n_samples=20)
 
     def model_factory():
-        return DummyModel(out_dim=10)
+        return DummyModel(n_bins=10)
 
     results = cross_validate(model_factory, dataset, k_folds=2, metrics=["nll"], trainer_cfg=None)
     assert len(results) == 2

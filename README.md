@@ -16,7 +16,7 @@ pytest
 The snippet below shows a minimal training loop:
 
 ```python
-from outdist import get_model, Trainer, make_dataset
+from outdist import get_model, Trainer, make_dataset, ConsoleLogger
 from outdist.configs.trainer import TrainerConfig
 from outdist.data.binning import EqualWidthBinning
 
@@ -25,7 +25,10 @@ train_ds, val_ds, test_ds = make_dataset("synthetic", n_samples=200, n_features=
 model = get_model("mlp", in_dim=1, n_bins=10)
 binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
 
-trainer = Trainer(TrainerConfig(max_epochs=5, batch_size=32))
+trainer = Trainer(
+    TrainerConfig(max_epochs=5, batch_size=32),
+    logger=ConsoleLogger(),
+)
 ckpt = trainer.fit(model, binning, train_ds, val_ds)
 results = trainer.evaluate(ckpt.model, test_ds, metrics=["nll", "accuracy"])
 print(results)
@@ -71,7 +74,12 @@ Implemented strategies include:
   ```
   The trainer can perform this automatically:
   ```python
-  trainer = Trainer(TrainerConfig(max_epochs=5), bootstrap_bins=True, n_bin_bootstraps=20)
+  trainer = Trainer(
+      TrainerConfig(max_epochs=5),
+      logger=ConsoleLogger(),
+      bootstrap_bins=True,
+      n_bin_bootstraps=20,
+  )
   ckpt = trainer.fit(model, lambda y: QuantileBinning(y, 10), train_ds, val_ds)
   ```
 
@@ -87,6 +95,7 @@ Passing `conformal_cfg` to `Trainer.fit` wraps the fitted model in a conformal s
 trainer = Trainer(
     TrainerConfig(max_epochs=5, batch_size=32),
     calibrator_cfg=CalibratorConfig(name="dirichlet"),
+    logger=ConsoleLogger(),
 )
 ckpt = trainer.fit(model, binning, train_ds, val_ds, conformal_cfg={"alpha": 0.1})
 print(ckpt.model.coverage(val_x, val_y))
@@ -104,6 +113,10 @@ model_cfgs = [
     ModelConfig(name="mlp", params={"in_dim": 1, "n_bins": 10, "hidden_dims": [4]}),
     ModelConfig(name="logreg", params={"in_dim": 1, "n_bins": 10}),
 ]
-ens_trainer = EnsembleTrainer(model_cfgs, TrainerConfig(max_epochs=5))
+ens_trainer = EnsembleTrainer(
+    model_cfgs,
+    TrainerConfig(max_epochs=5),
+    logger=ConsoleLogger(),
+)
 ensemble = ens_trainer.fit(binning, train_ds, val_ds)
 ```

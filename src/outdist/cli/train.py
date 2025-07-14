@@ -11,6 +11,7 @@ from ..data.datasets import make_dataset
 from ..data.binning import EqualWidthBinning
 from ..models import get_model
 from ..training.trainer import Trainer
+from ..losses import cross_entropy
 from ..training.logger import ConsoleLogger
 
 
@@ -98,9 +99,16 @@ def main(argv: list[str] | None = None) -> None:
         lr=args.lr,
         device=args.device,
     )
+    model = get_model(ModelConfig(name=args.model))
+    loss_fn = cross_entropy
+    if any(
+        hasattr(model, attr) for attr in ("imm_loss", "dsm_loss", "quantile_loss")
+    ):
+        loss_fn = None
     trainer = Trainer(
         cfg,
         calibrator_cfg=calib_cfg,
+        loss_fn=loss_fn,
         logger=ConsoleLogger(),
         bootstrap_bins=args.bootstrap_bins,
         n_bin_bootstraps=args.n_bin_bootstraps,
@@ -125,7 +133,6 @@ def main(argv: list[str] | None = None) -> None:
         if args.conformal_mode is not None:
             conformal_cfg["mode"] = args.conformal_mode
     binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
-    model = get_model(ModelConfig(name=args.model))
     trainer.fit(model, binning, train_ds, val_ds, conformal_cfg=conformal_cfg)
 
 

@@ -119,12 +119,19 @@ MODEL_CONFIGS = [
             "layers": 2,
         },
     ),
+    (
+        "imm_jump",
+        {
+            "in_dim": 1,
+            "step": 0.2,
+        },
+    ),
 ]
 
 
 @pytest.mark.parametrize("name, kwargs", MODEL_CONFIGS)
 def test_model_can_train_with_trainer(name: str, kwargs: dict) -> None:
-    if name == "diffusion":
+    if name in ("diffusion", "imm_jump"):
         x = torch.randn(20, 1)
         y = torch.randn(20, 1)
         dataset = torch.utils.data.TensorDataset(x, y)

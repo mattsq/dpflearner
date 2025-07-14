@@ -57,6 +57,7 @@ The following identifiers are recognised by `get_model` and the CLI:
 - `quantile_rf` – quantile regression forest
 - `lincde` – tree-based estimator via Lindsey's method
 - `rfcde` – random forest conditional density estimator
+- `imm_jump` – generative model based on inductive moment matching
 - `evidential` – placeholder for an evidential neural network
 
 New architectures can register themselves via `@register_model("name")` and become immediately available.

@@ -132,20 +132,23 @@ class Trainer:
 
                 if optimizer is not None:
                     optimizer.zero_grad()
-                out = model(x)
-                logits = out
-                if isinstance(out, dict):
-                    logits = out.get("logits", out.get("probs").log())
                 if hasattr(model, "quantile_loss"):
                     loss = model.quantile_loss(x, y.unsqueeze(1))
+                elif self.loss_fn is None and hasattr(model, "imm_loss"):
+                    loss = model.imm_loss(x, y)
                 elif self.loss_fn is None and hasattr(model, "dsm_loss"):
                     loss = model.dsm_loss(x, y)
-                elif self.loss_fn is evidential_loss:
-                    targets = self._to_index(model, y)
-                    loss = self.loss_fn(out["alpha"], targets)
                 else:
-                    targets = self._to_index(model, y)
-                    loss = self.loss_fn(logits, targets)
+                    out = model(x)
+                    logits = out
+                    if isinstance(out, dict):
+                        logits = out.get("logits", out.get("probs").log())
+                    if self.loss_fn is evidential_loss:
+                        targets = self._to_index(model, y)
+                        loss = self.loss_fn(out["alpha"], targets)
+                    else:
+                        targets = self._to_index(model, y)
+                        loss = self.loss_fn(logits, targets)
                 if optimizer is not None:
                     loss.backward()
                     optimizer.step()
@@ -166,10 +169,13 @@ class Trainer:
                 for batch in val_loader:
                     x, y = batch
                     x = x.to(self.device)
-                    out = model(x)
-                    logits = out
-                    if isinstance(out, dict):
-                        logits = out.get("logits", out.get("probs").log())
+                    if hasattr(model, "imm_loss") and hasattr(model, "predict_logits"):
+                        logits = model.predict_logits(x)
+                    else:
+                        out = model(x)
+                        logits = out
+                        if isinstance(out, dict):
+                            logits = out.get("logits", out.get("probs").log())
                     probs = logits.softmax(dim=-1).cpu()
                     probs_list.append(probs)
                     labels_list.append(self._to_index(model, y))
@@ -238,10 +244,13 @@ class Trainer:
             for batch in loader:
                 x, y = batch
                 x = x.to(self.device)
-                out = model(x)
-                logits = out
-                if isinstance(out, dict):
-                    logits = out.get("logits", out.get("probs").log())
+                if hasattr(model, "imm_loss") and hasattr(model, "predict_logits"):
+                    logits = model.predict_logits(x)
+                else:
+                    out = model(x)
+                    logits = out
+                    if isinstance(out, dict):
+                        logits = out.get("logits", out.get("probs").log())
                 preds.append(logits.cpu())
                 targets.append(self._to_index(model, y))
 
@@ -273,20 +282,23 @@ class Trainer:
                 x, y = batch
                 x = x.to(self.device)
                 y = y.to(self.device)
-                out = model(x)
-                logits = out
-                if isinstance(out, dict):
-                    logits = out.get("logits", out.get("probs").log())
                 if hasattr(model, "quantile_loss"):
                     _ = model.quantile_loss(x, y.unsqueeze(1))
+                elif self.loss_fn is None and hasattr(model, "imm_loss"):
+                    _ = model.imm_loss(x, y)
                 elif self.loss_fn is None and hasattr(model, "dsm_loss"):
                     _ = model.dsm_loss(x, y)
-                elif self.loss_fn is evidential_loss:
-                    targets = self._to_index(model, y)
-                    _ = self.loss_fn(out["alpha"], targets)
                 else:
-                    targets = self._to_index(model, y)
-                    _ = self.loss_fn(logits, targets)
+                    out = model(x)
+                    logits = out
+                    if isinstance(out, dict):
+                        logits = out.get("logits", out.get("probs").log())
+                    if self.loss_fn is evidential_loss:
+                        targets = self._to_index(model, y)
+                        _ = self.loss_fn(out["alpha"], targets)
+                    else:
+                        targets = self._to_index(model, y)
+                        _ = self.loss_fn(logits, targets)
 
 
 

@@ -1,6 +1,19 @@
-# dpflearner
+# outdist
 
-`outdist` is a small library for modelling discrete distributions over continuous targets. Each model predicts logits for a fixed set of bins while helper classes manage binning, evaluation and experiment management. The design closely follows the outline in [prompt.md](prompt.md).
+A Python library for modeling discrete distributions over continuous targets. `outdist` provides a plugin-based architecture where models predict logits for fixed bins, enabling probabilistic predictions with well-defined probability distributions, cumulative distribution functions, and sampling capabilities.
+
+## Core Concepts
+
+**Discrete distributions over continuous targets** are the central prediction type in `outdist`. Instead of point predictions, models output full probability distributions that support:
+
+- `.probs` - probability mass for each bin
+- `.cdf()` - cumulative distribution function
+- `.mean()` - expected value
+- `.sample()` - draw samples from the distribution
+
+**Plugin-based models** register themselves via decorators (`@register_model("name")`) and implement a simple interface: `forward(x) -> logits`. This makes adding new architectures straightforward.
+
+**Explicit binning** handles the conversion between continuous targets and discrete bins through `BinningScheme` objects that define bin edges and provide conversion utilities.
 
 ## Installation
 
@@ -11,92 +24,136 @@ pip install -e .
 pytest
 ```
 
-## Quick start
+## Quick Start
 
-The snippet below shows a minimal training loop:
+### Basic Training Loop
 
 ```python
 from outdist import get_model, Trainer, make_dataset, ConsoleLogger
 from outdist.configs.trainer import TrainerConfig
 from outdist.data.binning import EqualWidthBinning
 
-# use the built-in dummy classification dataset or a synthetic regression one
+# Create synthetic dataset
 train_ds, val_ds, test_ds = make_dataset("synthetic", n_samples=200, n_features=3)
+
+# Set up model and binning
 model = get_model("mlp", in_dim=1, n_bins=10)
 binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
 
+# Train the model
 trainer = Trainer(
     TrainerConfig(max_epochs=5, batch_size=32),
     logger=ConsoleLogger(),
 )
 ckpt = trainer.fit(model, binning, train_ds, val_ds)
+
+# Evaluate and get distribution predictions
 results = trainer.evaluate(ckpt.model, test_ds, metrics=["nll", "accuracy"])
 print(results)
 ```
 
-### Command line
+### Making Predictions
 
-Instead of writing Python code you can use the built-in CLI helpers:
+Once trained, models return `DistributionPrediction` objects with rich probabilistic interfaces:
+
+```python
+# Get predictions for test data
+test_x, test_y = next(iter(test_ds))
+predictions = ckpt.model(test_x)
+
+# Access probability distributions
+probs = predictions.probs  # [batch_size, n_bins]
+means = predictions.mean()  # [batch_size]
+samples = predictions.sample(n_samples=100)  # [batch_size, n_samples]
+
+# Evaluate cumulative probabilities
+cdf_values = predictions.cdf(test_y)  # P(Y <= y) for each target
+```
+
+### Command Line Interface
+
+For quick experimentation, use the built-in CLI:
 
 ```bash
 python -m outdist.cli.train --model mlp --dataset synthetic --epochs 5
 python -m outdist.cli.evaluate --model mlp --dataset synthetic --metrics nll accuracy
 ```
 
-## Models
+## Available Models
 
-The following identifiers are recognised by `get_model` and the CLI:
+The following model identifiers are supported by `get_model()` and the CLI:
 
+### Neural Networks
 - `logreg` – logistic regression baseline
 - `mlp` – multilayer perceptron
 - `gaussian_ls` – Gaussian location–scale model
 - `mdn` – mixture density network
 - `logistic_mixture` – mixture of logistics
 - `flow` – conditional normalising flow
-- `ckde` – conditional kernel density estimator
+- `evidential` – placeholder for an evidential neural network
+
+### Tree-based Methods
 - `quantile_rf` – quantile regression forest
 - `lincde` – tree-based estimator via Lindsey's method
 - `rfcde` – random forest conditional density estimator
+
+### Density Estimation
+- `ckde` – conditional kernel density estimator
 - `imm_jump` – generative model based on inductive moment matching
-- `evidential` – placeholder for an evidential neural network
 
-New architectures can register themselves via `@register_model("name")` and become immediately available.
+### Adding New Models
 
-## Binning strategies
-
-Utilities in `outdist.data.binning` convert continuous targets to bin indices. Each scheme implements the `BinningScheme` interface with monotonically increasing edges and helpers like `to_index` and `centers`.
-Implemented strategies include:
-
-- `EqualWidthBinning` – evenly spaced edges between a start and end value
-- `QuantileBinning` – edges based on quantiles of observed data
-- `bootstrap` – averages bin edges across bootstrap resamples
-  ```python
-  binning = bootstrap(lambda s: QuantileBinning(s, 10).edges, y_train, n_bootstrap=20)
-  ```
-  The trainer can perform this automatically:
-  ```python
-  trainer = Trainer(
-      TrainerConfig(max_epochs=5),
-      logger=ConsoleLogger(),
-      bootstrap_bins=True,
-      n_bin_bootstraps=20,
-  )
-  ckpt = trainer.fit(model, lambda y: QuantileBinning(y, 10), train_ds, val_ds)
-  ```
-
-## Calibration
-
-Optional probability calibration is implemented in `outdist.calibration`. Calibrators follow a small registry similar to models and are trained on held-out validation data when a `CalibratorConfig` is provided. The included `DirichletCalibrator` implements the method of Kull et al. 2019.
+New architectures can register themselves and become immediately available:
 
 ```python
-from outdist import get_model, Trainer, make_dataset, ConsoleLogger
-from outdist.configs.trainer import TrainerConfig
-from outdist.configs.calibration import CalibratorConfig
-from outdist.data.binning import EqualWidthBinning
+from outdist.models.base import BaseModel
+from outdist.registry import register_model
 
-train_ds, val_ds, test_ds = make_dataset("synthetic", n_samples=200)
-model = get_model("mlp", in_dim=1, n_bins=10)
-binning = EqualWidthBinning(0.0, 10.0, n_bins=10)
+@register_model("my_model")
+class MyModel(BaseModel):
+    def forward(self, x):
+        # Return logits for each bin
+        return self.net(x)
+```
+
+## Binning Strategies
+
+Binning schemes convert continuous targets to discrete bins. All schemes implement the `BinningScheme` interface with monotonically increasing edges and utilities like `to_index()` and `centers()`.
+
+### Available Strategies
+
+- **`EqualWidthBinning`** – evenly spaced edges between start and end values
+- **`QuantileBinning`** – edges based on quantiles of observed data
+- **`bootstrap()`** – averages bin edges across bootstrap resamples for robustness
+
+### Bootstrap Binning
+
+For more robust binning, especially with small datasets:
+
+```python
+from outdist.data.binning import bootstrap, QuantileBinning
+
+# Manual bootstrap
+binning = bootstrap(lambda s: QuantileBinning(s, 10).edges, y_train, n_bootstrap=20)
+
+# Automatic bootstrap during training
+trainer = Trainer(
+    TrainerConfig(max_epochs=5),
+    logger=ConsoleLogger(),
+    bootstrap_bins=True,
+    n_bin_bootstraps=20,
+)
+ckpt = trainer.fit(model, lambda y: QuantileBinning(y, 10), train_ds, val_ds)
+```
+
+## Advanced Features
+
+### Probability Calibration
+
+Improve prediction calibration using post-hoc calibration methods. The `DirichletCalibrator` implements the method of Kull et al. 2019:
+
+```python
+from outdist.configs.calibration import CalibratorConfig
 
 trainer = Trainer(
     TrainerConfig(max_epochs=5, batch_size=32),
@@ -104,40 +161,121 @@ trainer = Trainer(
     logger=ConsoleLogger(),
 )
 ckpt = trainer.fit(model, binning, train_ds, val_ds)
-results = trainer.evaluate(ckpt.model, test_ds, metrics=["nll"])
-print(results)
+# Calibrated predictions are automatically applied
 ```
 
-## Conformal intervals
+### Conformal Prediction
 
-Passing `conformal_cfg` to `Trainer.fit` wraps the fitted model in a conformal set predictor. The resulting `CHCDSConformal` adapter exposes `contains` and `coverage` utilities.
+Generate distribution-free prediction intervals with coverage guarantees:
 
 ```python
-trainer = Trainer(
-    TrainerConfig(max_epochs=5, batch_size=32),
-    calibrator_cfg=CalibratorConfig(name="dirichlet"),
-    logger=ConsoleLogger(),
+# Train with conformal prediction
+ckpt = trainer.fit(
+    model, binning, train_ds, val_ds, 
+    conformal_cfg={"alpha": 0.1}  # 90% coverage
 )
-ckpt = trainer.fit(model, binning, train_ds, val_ds, conformal_cfg={"alpha": 0.1})
-print(ckpt.model.coverage(val_x, val_y))
+
+# Check coverage on validation set
+test_x, test_y = next(iter(test_ds))
+coverage = ckpt.model.coverage(test_x, test_y)
+print(f"Empirical coverage: {coverage:.2%}")
+
+# Check if specific predictions contain true values
+contains = ckpt.model.contains(test_x, test_y)
 ```
 
-## Ensembles
+### Ensemble Training
 
-`EnsembleTrainer` trains several models in parallel and combines them through averaging or stacking. Bootstrapping of the training data is enabled by default for bagging-style ensembles.
+Train multiple models in parallel and combine predictions:
 
 ```python
 from outdist.training.ensemble_trainer import EnsembleTrainer
 from outdist.configs.model import ModelConfig
 
+# Define ensemble components
 model_cfgs = [
-    ModelConfig(name="mlp", params={"in_dim": 1, "n_bins": 10, "hidden_dims": [4]}),
+    ModelConfig(name="mlp", params={"in_dim": 1, "n_bins": 10, "hidden_dims": [64, 32]}),
+    ModelConfig(name="mdn", params={"in_dim": 1, "n_bins": 10, "n_components": 5}),
     ModelConfig(name="logreg", params={"in_dim": 1, "n_bins": 10}),
 ]
+
+# Train ensemble (with bootstrap sampling by default)
 ens_trainer = EnsembleTrainer(
     model_cfgs,
-    TrainerConfig(max_epochs=5),
+    TrainerConfig(max_epochs=10),
     logger=ConsoleLogger(),
 )
 ensemble = ens_trainer.fit(binning, train_ds, val_ds)
+
+# Ensemble predictions combine individual model outputs
+ensemble_preds = ensemble(test_x)
+```
+
+## Common Workflows
+
+### Custom Dataset Integration
+
+```python
+import torch
+from torch.utils.data import Dataset, DataLoader
+
+class MyDataset(Dataset):
+    def __init__(self, x, y):
+        self.x = torch.tensor(x, dtype=torch.float32)
+        self.y = torch.tensor(y, dtype=torch.float32)
+    
+    def __len__(self):
+        return len(self.x)
+    
+    def __getitem__(self, idx):
+        return self.x[idx], self.y[idx]
+
+# Create data loaders
+train_loader = DataLoader(MyDataset(X_train, y_train), batch_size=32)
+val_loader = DataLoader(MyDataset(X_val, y_val), batch_size=32)
+
+# Use with existing training pipeline
+model = get_model("mlp", in_dim=X_train.shape[1], n_bins=20)
+binning = QuantileBinning(y_train, n_bins=20)
+ckpt = trainer.fit(model, binning, train_loader, val_loader)
+```
+
+### Hyperparameter Tuning
+
+```python
+from outdist.configs.trainer import TrainerConfig
+
+def train_with_config(hidden_dims, lr):
+    model = get_model("mlp", in_dim=1, n_bins=10, hidden_dims=hidden_dims)
+    trainer = Trainer(TrainerConfig(max_epochs=20, lr=lr))
+    ckpt = trainer.fit(model, binning, train_ds, val_ds)
+    return trainer.evaluate(ckpt.model, val_ds, metrics=["nll"])
+
+# Grid search example
+best_nll = float('inf')
+for hidden_dims in [[32], [64], [32, 16]]:
+    for lr in [0.01, 0.001]:
+        results = train_with_config(hidden_dims, lr)
+        if results["nll"] < best_nll:
+            best_nll = results["nll"]
+            best_config = (hidden_dims, lr)
+```
+
+### Model Comparison
+
+```python
+models_to_compare = ["mlp", "mdn", "gaussian_ls", "quantile_rf"]
+results = {}
+
+for model_name in models_to_compare:
+    model = get_model(model_name, in_dim=1, n_bins=10)
+    ckpt = trainer.fit(model, binning, train_ds, val_ds)
+    results[model_name] = trainer.evaluate(
+        ckpt.model, test_ds, 
+        metrics=["nll", "accuracy", "coverage"]
+    )
+
+# Compare results
+for model_name, metrics in results.items():
+    print(f"{model_name}: NLL={metrics['nll']:.3f}, Acc={metrics['accuracy']:.3f}")
 ```

@@ -209,6 +209,11 @@ def test_default_config_instantiates_transformer():
 
 def test_transformer_reproducibility():
     """Test that transformer outputs are reproducible with same seed."""
+    # Set seed and create input tensor
+    torch.manual_seed(42)
+    x = torch.randn(2, 3)
+    
+    # First run
     torch.manual_seed(42)
     model1 = get_model(
         "transformer",
@@ -218,9 +223,11 @@ def test_transformer_reproducibility():
         n_heads=2,
         n_layers=1,
     )
-    x = torch.randn(2, 3)
-    logits1 = model1(x)
+    model1.eval()  # Set to eval mode to disable dropout
+    with torch.no_grad():
+        logits1 = model1(x)
     
+    # Second run with same seed and input
     torch.manual_seed(42)
     model2 = get_model(
         "transformer",
@@ -230,6 +237,8 @@ def test_transformer_reproducibility():
         n_heads=2,
         n_layers=1,
     )
-    logits2 = model2(x)
+    model2.eval()  # Set to eval mode to disable dropout
+    with torch.no_grad():
+        logits2 = model2(x)
     
     assert torch.allclose(logits1, logits2, atol=1e-6)

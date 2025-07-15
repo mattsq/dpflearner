@@ -189,9 +189,18 @@ class EnsembleTrainer:
             for xb, yb in loader:
                 X_val_list.append(xb)
                 y_val_list.append(yb)
-            X_val = torch.cat(X_val_list).numpy()
-            y_val = torch.cat(y_val_list).numpy()
-            w = learn_weights(models, X_val, y_val, l2=self.stack_cfg.get("l2", 1e-3))
+            X_val = torch.cat(X_val_list)
+            y_val = torch.cat(y_val_list)
+            binner = getattr(models[0], "binner", None)
+            if binner is not None:
+                y_val = binner.to_index(y_val)
+            y_val = y_val.long()
+            w = learn_weights(
+                models,
+                X_val.numpy(),
+                y_val.numpy(),
+                l2=self.stack_cfg.get("l2", 1e-3),
+            )
             return StackedEnsemble(models, w)
         else:
             return AverageEnsemble(models)

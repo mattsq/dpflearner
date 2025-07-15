@@ -138,6 +138,8 @@ class Trainer:
                     loss = model.imm_loss(x, y)
                 elif self.loss_fn is None and hasattr(model, "dsm_loss"):
                     loss = model.dsm_loss(x, y)
+                elif hasattr(model, "mf_loss"):
+                    loss = model.mf_loss(x, y)
                 else:
                     out = model(x)
                     logits = out
@@ -169,7 +171,9 @@ class Trainer:
                 for batch in val_loader:
                     x, y = batch
                     x = x.to(self.device)
-                    if hasattr(model, "imm_loss") and hasattr(model, "predict_logits"):
+                    if (
+                        hasattr(model, "imm_loss") or hasattr(model, "mf_loss")
+                    ) and hasattr(model, "predict_logits"):
                         logits = model.predict_logits(x)
                     else:
                         out = model(x)
@@ -244,7 +248,9 @@ class Trainer:
             for batch in loader:
                 x, y = batch
                 x = x.to(self.device)
-                if hasattr(model, "imm_loss") and hasattr(model, "predict_logits"):
+                if (
+                    hasattr(model, "imm_loss") or hasattr(model, "mf_loss")
+                ) and hasattr(model, "predict_logits"):
                     logits = model.predict_logits(x)
                 else:
                     out = model(x)
@@ -288,6 +294,8 @@ class Trainer:
                     _ = model.imm_loss(x, y)
                 elif self.loss_fn is None and hasattr(model, "dsm_loss"):
                     _ = model.dsm_loss(x, y)
+                elif hasattr(model, "mf_loss"):
+                    _ = model.mf_loss(x, y)
                 else:
                     out = model(x)
                     logits = out

@@ -8,22 +8,38 @@ This is `outdist` - a Python library for modeling discrete distributions over co
 
 ## Development Commands
 
+### Environment Setup
+This project uses `uv` for Python environment management. Always activate the virtual environment before running commands:
+
+```bash
+uv venv                   # Create virtual environment (first time only)
+source .venv/bin/activate # Activate virtual environment
+```
+
+Or run commands directly with uv:
+```bash
+uv run python -m pytest  # Run with uv (automatically uses correct environment)
+uv run python -c "..."   # Run Python scripts with uv
+```
+
 ### Installation and Setup
 ```bash
+uv sync                   # Install dependencies using uv
+# OR if using pip:
 pip install -e .
 ```
 
 ### Testing
 ```bash
-pytest                    # Run all tests
-pytest -k "test_name"     # Run specific test
-pytest tests/test_*.py    # Run specific test file
+uv run pytest                    # Run all tests
+uv run pytest -k "test_name"     # Run specific test
+uv run pytest tests/test_*.py    # Run specific test file
 ```
 
 ### CLI Usage
 ```bash
-python -m outdist.cli.train --model mlp --dataset synthetic --epochs 5
-python -m outdist.cli.evaluate --model mlp --dataset synthetic --metrics nll accuracy
+uv run python -m outdist.cli.train --model mlp --dataset synthetic --epochs 5
+uv run python -m outdist.cli.evaluate --model mlp --dataset synthetic --metrics nll accuracy
 ```
 
 ## Architecture
@@ -40,7 +56,7 @@ python -m outdist.cli.evaluate --model mlp --dataset synthetic --metrics nll acc
 #### Models (`src/outdist/models/`)
 - All models inherit from `BaseModel` and implement `forward(x) -> logits`
 - Models register themselves: `@register_model("name")`
-- Available models: `logreg`, `mlp`, `gaussian_ls`, `mdn`, `logistic_mixture`, `flow`, `ckde`, `quantile_rf`, `lincde`, `rfcde`, `imm_jump`, `evidential`
+- Available models: `logreg`, `mlp`, `gaussian_ls`, `mdn`, `logistic_mixture`, `flow`, `ckde`, `quantile_rf`, `lincde`, `rfcde`, `imm_jump`, `evidential`, `transformer`
 
 #### Binning (`src/outdist/data/binning.py`)
 - `EqualWidthBinning` - evenly spaced bins
@@ -95,3 +111,9 @@ ckpt = trainer.fit(model, binning, train_ds, val_ds)
 - Tests mirror the `src/` directory structure
 - Each model has corresponding `test_*_model.py` file
 - Use `pytest` for running tests
+
+### Testing Notes for Development
+- **Import Issues**: Some models have external dependencies (like `nflows`) that may not be installed, causing import errors when running full test suite
+- **Testing Strategy**: For testing new models in isolation, create standalone test files that import only the specific model components needed, avoiding the full model registry
+- **Simple Component Tests**: Use `python test_file.py` with minimal imports for quick validation of new model implementations
+- **Framework Integration**: Once basic functionality is verified, add proper pytest tests following the existing `test_*_model.py` pattern

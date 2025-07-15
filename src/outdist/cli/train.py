@@ -102,7 +102,7 @@ def main(argv: list[str] | None = None) -> None:
     model = get_model(ModelConfig(name=args.model))
     loss_fn = cross_entropy
     if any(
-        hasattr(model, attr) for attr in ("imm_loss", "dsm_loss", "quantile_loss")
+        hasattr(model, attr) for attr in ("imm_loss", "dsm_loss", "mf_loss", "quantile_loss")
     ):
         loss_fn = None
     trainer = Trainer(

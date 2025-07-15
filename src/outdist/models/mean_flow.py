@@ -6,12 +6,13 @@ from torch.nn import functional as F
 from torch.autograd.functional import jvp
 
 from . import register_model
+from .base import BaseModel
 from ..utils import make_mlp
 from ..data.binning import BinningScheme
 
 
 @register_model("mean_flow")
-class MeanFlow(nn.Module):
+class MeanFlow(BaseModel):
     """Predict the average velocity from time ``s`` to ``t``."""
 
     def __init__(
@@ -105,6 +106,10 @@ class MeanFlow(nn.Module):
         return probs.log()
 
     # ----------------------------------------------------------- #
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Return logits for each output bin given x."""
+        return self.predict_logits(x)
+
     def __call__(self, *args, **kw):
         raise RuntimeError("Use mf_loss() for training or predict_logits() for eval.")
 

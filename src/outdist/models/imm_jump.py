@@ -4,6 +4,7 @@ import torch
 from torch import nn
 
 from . import register_model
+from .base import BaseModel
 from ..utils import make_mlp
 from ..data.binning import BinningScheme
 
@@ -25,7 +26,7 @@ def laplace_mmd2(x: torch.Tensor, y: torch.Tensor, gamma: float = 1.0) -> torch.
 
 
 @register_model("imm_jump")
-class IMMJumpNet(nn.Module):
+class IMMJumpNet(BaseModel):
     """Single-step (s->t) mapping network for Inductive-Moment-Matching."""
 
     def __init__(
@@ -51,7 +52,7 @@ class IMMJumpNet(nn.Module):
         self.time_emb = nn.Linear(2, time_embed_dim)
         self.core = make_mlp(in_dim + 1 + time_embed_dim, 1, hidden_dims)
 
-    def forward(
+    def _forward_denoising(
         self,
         x: torch.Tensor,
         y_noisy: torch.Tensor,
@@ -82,11 +83,11 @@ class IMMJumpNet(nn.Module):
                 curr_s = torch.ones_like(s)
                 for _ in range(int(1 / self.step)):
                     curr_t = curr_s - self.step
-                    y_tmp = self.forward(x, y_tmp, curr_s, curr_t)
+                    y_tmp = self._forward_denoising(x, y_tmp, curr_s, curr_t)
                     curr_s = curr_t
             y_s_real[use_model] = y_tmp[use_model]
 
-        y_hat_t = self.forward(x, y_s_real, s, t)
+        y_hat_t = self._forward_denoising(x, y_s_real, s, t)
         y_t_true = y + 1e-3 * torch.randn_like(y)
         return laplace_mmd2(y_hat_t, y_t_true)
 
@@ -100,7 +101,7 @@ class IMMJumpNet(nn.Module):
         s = torch.ones(B * n_particles, device=device)
         for _ in range(steps):
             t = s - self.step
-            y = self.forward(
+            y = self._forward_denoising(
                 x.repeat_interleave(n_particles, 0),
                 y.flatten(),
                 s,
@@ -114,6 +115,10 @@ class IMMJumpNet(nn.Module):
         hist.scatter_add_(1, idx, torch.ones_like(idx, dtype=hist.dtype))
         probs = (hist + 0.5) / (n_particles + 0.5 * K)
         return probs.log()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Return logits for each output bin given x."""
+        return self.predict_logits(x)
 
     def __call__(self, x: torch.Tensor):
         raise RuntimeError(

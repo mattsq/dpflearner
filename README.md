@@ -108,7 +108,7 @@ New architectures can register themselves and become immediately available:
 
 ```python
 from outdist.models.base import BaseModel
-from outdist.registry import register_model
+from outdist.models import register_model
 
 @register_model("my_model")
 class MyModel(BaseModel):

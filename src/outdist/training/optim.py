@@ -1,3 +1,8 @@
 """Thin wrappers around torch.optim."""
 
-# Placeholder for optimizer utilities.
+# TODO: Implement optimizer utilities
+# - Learning rate schedulers
+# - Optimizer configurations
+# - Gradient clipping utilities
+
+__all__ = []

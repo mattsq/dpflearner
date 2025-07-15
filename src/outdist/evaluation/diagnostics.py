@@ -1,3 +1,9 @@
 """Diagnostics tools like reliability diagrams."""
 
-# Placeholder for diagnostic plotting utilities.
+# TODO: Implement diagnostic plotting utilities
+# - Reliability diagrams
+# - Calibration plots
+# - Coverage plots
+# - Sharpness metrics
+
+__all__ = []

@@ -117,3 +117,10 @@ ckpt = trainer.fit(model, binning, train_ds, val_ds)
 - **Testing Strategy**: For testing new models in isolation, create standalone test files that import only the specific model components needed, avoiding the full model registry
 - **Simple Component Tests**: Use `python test_file.py` with minimal imports for quick validation of new model implementations
 - **Framework Integration**: Once basic functionality is verified, add proper pytest tests following the existing `test_*_model.py` pattern
+
+## Git Workflow
+
+### Branch Naming Convention
+- **Claude Code branches**: Always prefix branches with `claude-code/` when making changes
+- **Examples**: `claude-code/add-transformer-model`, `claude-code/fix-bug-123`, `claude-code/improve-readme`
+- **Rationale**: Makes it clear which branches were created by Claude Code for easy identification and management

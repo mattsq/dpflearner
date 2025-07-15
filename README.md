@@ -90,6 +90,7 @@ The following model identifiers are supported by `get_model()` and the CLI:
 - `mdn` – mixture density network
 - `logistic_mixture` – mixture of logistics
 - `flow` – conditional normalising flow
+- `transformer` – transformer with self-attention and distributional output
 - `evidential` – placeholder for an evidential neural network
 
 ### Tree-based Methods
@@ -261,14 +262,48 @@ for hidden_dims in [[32], [64], [32, 16]]:
             best_config = (hidden_dims, lr)
 ```
 
+### Transformer Model Usage
+
+The transformer model uses self-attention to capture dependencies between input features:
+
+```python
+# Basic transformer configuration
+model = get_model(
+    "transformer",
+    in_dim=5,              # Number of input features
+    n_bins=20,             # Number of output bins
+    d_model=64,            # Hidden dimension
+    n_heads=8,             # Number of attention heads
+    n_layers=2,            # Number of transformer layers
+    pooling="mean",        # Pooling strategy: "mean", "max", "sum", "last"
+    dropout=0.1            # Dropout rate
+)
+
+# Advanced transformer configuration
+model = get_model(
+    "transformer",
+    in_dim=10,
+    n_bins=50,
+    d_model=128,
+    n_heads=8,
+    n_layers=4,
+    d_ff=512,              # Feed-forward dimension (default: d_model * 4)
+    max_seq_len=1000,      # Maximum sequence length for positional encoding
+    pooling="mean"
+)
+```
+
 ### Model Comparison
 
 ```python
-models_to_compare = ["mlp", "mdn", "gaussian_ls", "quantile_rf"]
+models_to_compare = ["mlp", "mdn", "transformer", "gaussian_ls", "quantile_rf"]
 results = {}
 
 for model_name in models_to_compare:
-    model = get_model(model_name, in_dim=1, n_bins=10)
+    if model_name == "transformer":
+        model = get_model(model_name, in_dim=1, n_bins=10, d_model=32, n_heads=4)
+    else:
+        model = get_model(model_name, in_dim=1, n_bins=10)
     ckpt = trainer.fit(model, binning, train_ds, val_ds)
     results[model_name] = trainer.evaluate(
         ckpt.model, test_ds, 

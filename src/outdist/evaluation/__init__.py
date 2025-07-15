@@ -1,5 +1,5 @@
 """Evaluation utilities for outdist models."""
 
-from .evaluator import Evaluator
+from .evaluator import cross_validate, CVFoldResult
 
-__all__ = ["Evaluator"]
+__all__ = ["cross_validate", "CVFoldResult"]

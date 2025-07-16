@@ -17,10 +17,12 @@ class TrainingLogger:
         self.num_batches = num_batches
 
     # ------------------------------------------------------------------
-    def log_batch(self, batch_idx: int, loss: float) -> None:
+    def log_batch(
+        self, batch_idx: int, loss: float, metrics: dict[str, float] | None = None
+    ) -> None:
         """Record statistics for a finished batch."""
         self.losses.append(loss)
-        self.on_batch_end(batch_idx, loss)
+        self.on_batch_end(batch_idx, loss, metrics or {})
 
     # ------------------------------------------------------------------
     def end_epoch(self, epoch: int) -> None:
@@ -29,12 +31,16 @@ class TrainingLogger:
         self.on_epoch_end(epoch, avg)
 
     # ------------------------------------------------------------------
-    def on_batch_end(self, batch_idx: int, loss: float) -> None:  # pragma: no cover - hook
+    def on_batch_end(
+        self, batch_idx: int, loss: float, metrics: dict[str, float]
+    ) -> None:  # pragma: no cover - hook
         """Hook executed when a batch finishes."""
         pass
 
     # ------------------------------------------------------------------
-    def on_epoch_end(self, epoch: int, avg_loss: float) -> None:  # pragma: no cover - hook
+    def on_epoch_end(
+        self, epoch: int, avg_loss: float
+    ) -> None:  # pragma: no cover - hook
         """Hook executed at the end of an epoch."""
         pass
 
@@ -42,15 +48,16 @@ class TrainingLogger:
 class ConsoleLogger(TrainingLogger):
     """Simple logger that prints batch and epoch statistics to ``stdout``."""
 
-    def on_batch_end(self, batch_idx: int, loss: float) -> None:
+    def on_batch_end(
+        self, batch_idx: int, loss: float, metrics: dict[str, float]
+    ) -> None:
         is_last = batch_idx + 1 == self.num_batches
         end = "\n" if is_last else "\r"
-        print(
-            f"Batch {batch_idx + 1}/{self.num_batches} loss: {loss:.4f}",
-            end=end,
-            flush=True,
-        )
+        parts = [f"Batch {batch_idx + 1}/{self.num_batches}"]
+        parts.append(f"loss: {loss:.4f}")
+        for name, value in metrics.items():
+            parts.append(f"{name}: {value:.4f}")
+        print(" ".join(parts), end=end, flush=True)
 
     def on_epoch_end(self, epoch: int, avg_loss: float) -> None:
         print(f"Epoch {epoch} average loss: {avg_loss:.4f}")
-

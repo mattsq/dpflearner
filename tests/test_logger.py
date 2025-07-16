@@ -15,7 +15,9 @@ class CountingLogger(TrainingLogger):
         self.epochs = 0
         self.avgs = []
 
-    def on_batch_end(self, batch_idx: int, loss: float) -> None:
+    def on_batch_end(
+        self, batch_idx: int, loss: float, metrics: dict[str, float]
+    ) -> None:
         self.batches += 1
 
     def on_epoch_end(self, epoch: int, avg_loss: float) -> None:
@@ -40,6 +42,7 @@ def test_trainer_uses_logger() -> None:
 def test_console_logger_subclass() -> None:
     assert issubclass(ConsoleLogger, TrainingLogger)
 
+
 class DummyCollectLogger(TrainingLogger):
     def __init__(self):
         super().__init__()
@@ -52,9 +55,9 @@ class DummyCollectLogger(TrainingLogger):
 def test_training_logger_computes_average():
     logger = DummyCollectLogger()
     logger.start_epoch(0, num_batches=3)
-    logger.log_batch(0, 1.0)
-    logger.log_batch(1, 2.0)
-    logger.log_batch(2, 3.0)
+    logger.log_batch(0, 1.0, {})
+    logger.log_batch(1, 2.0, {})
+    logger.log_batch(2, 3.0, {})
     logger.end_epoch(0)
     assert logger.avgs == [2.0]
 

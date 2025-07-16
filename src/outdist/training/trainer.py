@@ -63,8 +63,10 @@ class Trainer:
     def fit(
         self,
         model: BaseModel,
-        binning: binning_scheme.BinningScheme
-        | Callable[[torch.Tensor], binning_scheme.BinningScheme],
+        binning: (
+            binning_scheme.BinningScheme
+            | Callable[[torch.Tensor], binning_scheme.BinningScheme]
+        ),
         train_ds: Dataset,
         val_ds: Optional[Dataset] = None,
         *,
@@ -82,26 +84,35 @@ class Trainer:
         if targets:
             y_all = torch.cat(targets)
             if self.bootstrap_bins:
+
                 def strategy(sample: torch.Tensor) -> torch.Tensor:
                     out = binning(sample) if callable(binning) else binning.fit(sample)
                     if isinstance(out, binning_scheme.LearnableBinningScheme):
-                        raise ValueError("Bootstrapping incompatible with LearnableBinningScheme")
+                        raise ValueError(
+                            "Bootstrapping incompatible with LearnableBinningScheme"
+                        )
                     if isinstance(out, binning_scheme.BinningScheme):
                         return out.edges
                     if isinstance(out, torch.Tensor):
                         return out
-                    raise TypeError("Binning callable must return edges or a BinningScheme")
+                    raise TypeError(
+                        "Binning callable must return edges or a BinningScheme"
+                    )
 
                 binning = binning_scheme.bootstrap(
                     strategy, y_all, n_bootstrap=self.n_bin_bootstraps
                 )
             else:
-                if not isinstance(binning, binning_scheme.BinningScheme) and callable(binning):
+                if not isinstance(binning, binning_scheme.BinningScheme) and callable(
+                    binning
+                ):
                     binning = binning(y_all)
                 else:
                     binning.fit(y_all)  # type: ignore[call-arg]
 
-            if isinstance(binning, binning_scheme.LearnableBinningScheme) and not isinstance(model, nn.Module):
+            if isinstance(
+                binning, binning_scheme.LearnableBinningScheme
+            ) and not isinstance(model, nn.Module):
                 raise TypeError("Learnable bins require model to be an nn.Module")
             if hasattr(model, "binner"):
                 model.binner = binning
@@ -111,10 +122,10 @@ class Trainer:
 
         model.to(self.device)
         params = list(model.parameters())
-        optimizer = (
-            torch.optim.Adam(params, lr=self.cfg.lr) if params else None
+        optimizer = torch.optim.Adam(params, lr=self.cfg.lr) if params else None
+        train_loader = DataLoader(
+            train_ds, batch_size=self.cfg.batch_size, shuffle=True
         )
-        train_loader = DataLoader(train_ds, batch_size=self.cfg.batch_size, shuffle=True)
         val_loader = (
             DataLoader(val_ds, batch_size=self.cfg.batch_size)
             if val_ds is not None
@@ -132,30 +143,53 @@ class Trainer:
 
                 if optimizer is not None:
                     optimizer.zero_grad()
+
+                metrics = {}
+                logits_for_metrics = None
+
                 if hasattr(model, "quantile_loss"):
                     loss = model.quantile_loss(x, y.unsqueeze(1))
                 elif self.loss_fn is None and hasattr(model, "imm_loss"):
                     loss = model.imm_loss(x, y)
+                    if hasattr(model, "predict_logits"):
+                        with torch.no_grad():
+                            logits_for_metrics = model.predict_logits(x)
                 elif self.loss_fn is None and hasattr(model, "dsm_loss"):
                     loss = model.dsm_loss(x, y)
+                    if hasattr(model, "predict_logits"):
+                        with torch.no_grad():
+                            logits_for_metrics = model.predict_logits(x)
                 elif self.loss_fn is None and hasattr(model, "mf_loss"):
                     loss = model.mf_loss(x, y)
+                    if hasattr(model, "predict_logits"):
+                        with torch.no_grad():
+                            logits_for_metrics = model.predict_logits(x)
                 else:
                     out = model(x)
                     logits = out
                     if isinstance(out, dict):
                         logits = out.get("logits", out.get("probs").log())
+                    logits_for_metrics = logits.detach()
                     if self.loss_fn is evidential_loss:
                         targets = self._to_index(model, y)
                         loss = self.loss_fn(out["alpha"], targets)
                     else:
                         targets = self._to_index(model, y)
                         loss = self.loss_fn(logits, targets)
+
                 if optimizer is not None:
                     loss.backward()
                     optimizer.step()
+
+                if logits_for_metrics is not None:
+                    targets = self._to_index(model, y).view(-1)
+                    for name in ("nll", "accuracy"):
+                        metric_fn = METRICS_REGISTRY[name]
+                        value = metric_fn(logits_for_metrics, targets)
+                        metrics[name] = float(value.item())
+
                 if self.logger is not None:
-                    self.logger.log_batch(batch_idx, float(loss.item()))
+                    self.logger.log_batch(batch_idx, float(loss.item()), metrics)
 
             if val_loader is not None:
                 self._run_validation(model, val_loader)
@@ -172,7 +206,9 @@ class Trainer:
                     x, y = batch
                     x = x.to(self.device)
                     if (
-                        hasattr(model, "imm_loss") or hasattr(model, "mf_loss") or hasattr(model, "dsm_loss")
+                        hasattr(model, "imm_loss")
+                        or hasattr(model, "mf_loss")
+                        or hasattr(model, "dsm_loss")
                     ) and hasattr(model, "predict_logits"):
                         logits = model.predict_logits(x)
                     else:
@@ -193,6 +229,7 @@ class Trainer:
         # Optional conformalisation on a calibration split
         if conformal_cfg is not None:
             from outdist.conformal import CHCDSConformal
+
             split = conformal_cfg.get("split", 0.2)
             alpha = conformal_cfg.get("alpha", 0.1)
             tau = conformal_cfg.get("tau", 1 - alpha)
@@ -307,6 +344,3 @@ class Trainer:
                     else:
                         targets = self._to_index(model, y)
                         _ = self.loss_fn(logits, targets)
-
-
-

@@ -117,8 +117,8 @@ class ConsistencyCDEModel(TorchModel):
         s = (t - torch.rand(N, device=device) * self.delta_max).clamp_min(0.0)
 
         noise = torch.randn_like(y) * self.sigma_max
-        y_t = y + noise * t
-        y_s = y + noise * s
+        y_t = y + noise * t.unsqueeze(-1)
+        y_s = y + noise * s.unsqueeze(-1)
 
         # Convert noisy targets to bin indices for consistency loss
         y_t_bins = self.binner.to_index(y_t.squeeze(-1))

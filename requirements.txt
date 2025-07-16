@@ -1,6 +1,12 @@
-torch
-numpy
-scikit-learn
+# Core dependencies with version constraints to prevent compatibility issues
+torch>=2.0.0
+numpy>=1.21.0,<2.0.0
+scikit-learn>=1.0.0
 ngboost>=0.5.6
-nflows
-torchdiffeq
+nflows>=0.14
+torchdiffeq>=0.2.0
+pytest>=7.0.0
+
+# Optional dependencies (install separately if needed)
+# rfcde>=0.1  # For RFCDE model support
+# Note: lincde is not available as Python package (R only)

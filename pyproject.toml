@@ -7,23 +7,37 @@ name = "outdist"
 version = "0.1.0"
 authors = [{ name = "Your Name", email = "you@example.com" }]
 description = "Package for discrete distributions over continuous outcomes"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 license = {file = "LICENSE"}
 dependencies = [
-    "torch",
-    "numpy",
-    "scikit-learn",
+    "torch>=2.0.0",
+    "numpy>=1.21.0,<2.0.0",
+    "scikit-learn>=1.0.0",
     "ngboost>=0.5.6",
-    "nflows",
-    "torchdiffeq",
+    "nflows>=0.14",
+    "torchdiffeq>=0.2.0",
+    "pytest>=7.0.0",
 ]
 
 [project.optional-dependencies]
-lincde = ["lincde"]
-rfcde = ["rfcde"]
+# Note: lincde is not available as a Python package (only R package exists)
+# The lincde model will gracefully handle the missing dependency with try/except
+rfcde = ["rfcde>=0.1"]
+dev = ["pytest>=7.0.0", "pytest-xdist"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
 "outdist" = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+]

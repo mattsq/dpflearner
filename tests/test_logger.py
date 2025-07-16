@@ -20,7 +20,7 @@ class CountingLogger(TrainingLogger):
     ) -> None:
         self.batches += 1
 
-    def on_epoch_end(self, epoch: int, avg_loss: float) -> None:
+    def on_epoch_end(self, epoch: int, avg_loss: float, metrics: dict[str, float]) -> None:
         self.epochs += 1
         self.avgs.append(avg_loss)
 
@@ -48,7 +48,7 @@ class DummyCollectLogger(TrainingLogger):
         super().__init__()
         self.avgs = []
 
-    def on_epoch_end(self, epoch: int, avg_loss: float) -> None:
+    def on_epoch_end(self, epoch: int, avg_loss: float, metrics: dict[str, float]) -> None:
         self.avgs.append(avg_loss)
 
 

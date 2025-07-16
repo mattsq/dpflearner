@@ -1,6 +1,6 @@
 import torch
 import pytest
-from outdist.cli import train, evaluate
+from outdist import cli
 from outdist.models import BaseModel, register_model, MODEL_REGISTRY
 from outdist.configs.model import ModelConfig
 from outdist.data import binning as binning_scheme
@@ -26,7 +26,7 @@ def test_train_cli_runs(tmp_path, monkeypatch):
     # run training for 1 epoch using synthetic dataset
     args = ["--model", "dummy_cli", "--dataset", "synthetic", "--epochs", "0", "--batch-size", "2"]
     monkeypatch.chdir(tmp_path)
-    train.main(args)
+    cli.main(args)
 
 
 @pytest.mark.parametrize(
@@ -36,33 +36,5 @@ def test_train_cli_runs(tmp_path, monkeypatch):
 def test_train_cli_registered_models(name, tmp_path, monkeypatch):
     args = ["--model", name, "--dataset", "synthetic", "--epochs", "0", "--batch-size", "2"]
     monkeypatch.chdir(tmp_path)
-    train.main(args)
+    cli.main(args)
 
-
-def test_evaluate_cli_runs(tmp_path, monkeypatch):
-    args = ["--model", "dummy_cli", "--dataset", "synthetic", "--batch-size", "2", "--metrics", "nll"]
-    monkeypatch.chdir(tmp_path)
-    evaluate.main(args)
-
-
-@pytest.mark.parametrize(
-    "name",
-    [
-        n
-        for n in MODEL_REGISTRY.keys()
-        if n not in {"ckde", "quantile_rf", "lincde", "rfcde", "ngboost"}
-    ],
-)
-def test_evaluate_cli_registered_models(name, tmp_path, monkeypatch):
-    args = [
-        "--model",
-        name,
-        "--dataset",
-        "synthetic",
-        "--batch-size",
-        "2",
-        "--metrics",
-        "nll",
-    ]
-    monkeypatch.chdir(tmp_path)
-    evaluate.main(args)

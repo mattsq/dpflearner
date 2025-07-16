@@ -75,8 +75,7 @@ cdf_values = predictions.cdf(test_y)  # P(Y <= y) for each target
 For quick experimentation, use the built-in CLI:
 
 ```bash
-python -m outdist.cli.train --model mlp --dataset synthetic --epochs 5
-python -m outdist.cli.evaluate --model mlp --dataset synthetic --metrics nll accuracy
+python -m outdist.cli --model mlp --dataset synthetic --epochs 5
 ```
 
 ## Available Models

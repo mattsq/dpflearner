@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import Dict, List
 
 
 class TrainingLogger:
@@ -8,12 +8,14 @@ class TrainingLogger:
 
     def __init__(self) -> None:
         self.losses: List[float] = []
+        self.metrics: Dict[str, List[float]] = {}
         self.num_batches: int = 0
 
     # ------------------------------------------------------------------
     def start_epoch(self, epoch: int, num_batches: int) -> None:
         """Reset state for a new epoch."""
         self.losses = []
+        self.metrics = {}
         self.num_batches = num_batches
 
     # ------------------------------------------------------------------
@@ -22,13 +24,19 @@ class TrainingLogger:
     ) -> None:
         """Record statistics for a finished batch."""
         self.losses.append(loss)
+        if metrics:
+            for name, value in metrics.items():
+                self.metrics.setdefault(name, []).append(value)
         self.on_batch_end(batch_idx, loss, metrics or {})
 
     # ------------------------------------------------------------------
     def end_epoch(self, epoch: int) -> None:
         """Compute epoch statistics and trigger :meth:`on_epoch_end`."""
-        avg = sum(self.losses) / len(self.losses) if self.losses else 0.0
-        self.on_epoch_end(epoch, avg)
+        avg_loss = sum(self.losses) / len(self.losses) if self.losses else 0.0
+        avg_metrics = {
+            name: sum(values) / len(values) for name, values in self.metrics.items()
+        }
+        self.on_epoch_end(epoch, avg_loss, avg_metrics)
 
     # ------------------------------------------------------------------
     def on_batch_end(
@@ -39,7 +47,7 @@ class TrainingLogger:
 
     # ------------------------------------------------------------------
     def on_epoch_end(
-        self, epoch: int, avg_loss: float
+        self, epoch: int, avg_loss: float, metrics: dict[str, float]
     ) -> None:  # pragma: no cover - hook
         """Hook executed at the end of an epoch."""
         pass
@@ -59,5 +67,8 @@ class ConsoleLogger(TrainingLogger):
             parts.append(f"{name}: {value:.4f}")
         print(" ".join(parts), end=end, flush=True)
 
-    def on_epoch_end(self, epoch: int, avg_loss: float) -> None:
-        print(f"Epoch {epoch} average loss: {avg_loss:.4f}")
+    def on_epoch_end(self, epoch: int, avg_loss: float, metrics: dict[str, float]) -> None:
+        parts = [f"Epoch {epoch} average loss: {avg_loss:.4f}"]
+        for name, value in metrics.items():
+            parts.append(f"{name}: {value:.4f}")
+        print(" ".join(parts))

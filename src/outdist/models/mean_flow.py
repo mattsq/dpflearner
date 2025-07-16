@@ -46,10 +46,12 @@ class MeanFlow(BaseModel):
         self, x: torch.Tensor, y: torch.Tensor, s: torch.Tensor, t: torch.Tensor
     ) -> torch.Tensor:
         """Predict the average velocity from ``s`` to ``t``."""
-        y = y.squeeze(-1)
+        # Ensure y has the right shape for concatenation
+        if y.ndim == 1:
+            y = y.unsqueeze(-1)
         te = torch.stack([torch.cos(math.pi * s), torch.sin(math.pi * s)], dim=-1)
         te = self.time_emb(te)
-        inp = torch.cat([x, y[:, None], te], dim=-1)
+        inp = torch.cat([x, y, te], dim=-1)
         return self.core(inp).squeeze(-1)
 
     # ----------------------------------------------------------- #

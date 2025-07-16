@@ -93,11 +93,16 @@ The following model identifiers are supported by `get_model()` and the CLI:
 - `flow` – conditional normalising flow
 - `transformer` – transformer with self-attention and distributional output
 - `evidential` – placeholder for an evidential neural network
+- `diffusion` – score-based diffusion model
+- `iqn` – implicit quantile network
+- `kmn` – kernel mixture network
+- `mean_flow` – mean flow model
 
 ### Tree-based Methods
 - `quantile_rf` – quantile regression forest
 - `lincde` – tree-based estimator via Lindsey's method
 - `rfcde` – random forest conditional density estimator
+- `ngboost` – natural gradient boosting
 
 ### Density Estimation
 - `ckde` – conditional kernel density estimator

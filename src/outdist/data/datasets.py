@@ -26,8 +26,8 @@ def make_dataset(
     ----------
     name:
         Identifier of the dataset to create. ``"dummy"`` yields random
-        classification data while ``"synthetic"`` creates a continuous
-        regression target.
+        classification data while ``"synthetic"`` and ``"synthetic-hard"``
+        create continuous regression targets of varying difficulty.
     n_samples:
         Total number of samples to generate.
     splits:
@@ -57,6 +57,23 @@ def make_dataset(
         ]
         chosen = [random.choice(funcs) for _ in range(n_features)]
         y = sum(f(x[:, i]) for i, f in enumerate(chosen))
+        y = y + noise * torch.randn(n_samples)
+        dataset = TensorDataset(x, y)
+    elif name == "synthetic-hard":
+        x = torch.randn(n_samples, n_features)
+        pair_funcs: list[Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = [
+            lambda a, b: torch.sin(a * b),
+            lambda a, b: torch.cos(a + b),
+            lambda a, b: a * b,
+            lambda a, b: torch.exp(-(a ** 2 + b ** 2)),
+        ]
+        y = torch.zeros(n_samples)
+        for i in range(0, n_features - 1, 2):
+            f = random.choice(pair_funcs)
+            y = y + f(x[:, i], x[:, i + 1])
+        if n_features % 2 == 1:
+            y = y + torch.sin(x[:, -1])
+        y = y + torch.prod(torch.tanh(x), dim=1)
         y = y + noise * torch.randn(n_samples)
         dataset = TensorDataset(x, y)
     else:

@@ -11,3 +11,10 @@ def test_synthetic_dataset_shapes():
     x, y = train_ds[0]
     assert x.shape == (4,)
     assert y.dim() == 0
+
+
+def test_synthetic_hard_dataset_shapes():
+    train_ds, _, _ = make_dataset("synthetic-hard", n_samples=30, n_features=3)
+    x, y = train_ds[0]
+    assert x.shape == (3,)
+    assert y.dim() == 0

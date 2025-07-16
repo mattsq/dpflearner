@@ -22,7 +22,9 @@ def positive_linear(in_dim: int, out_dim: int) -> nn.Module:
             super().__init__()
             self.weight_raw = nn.Parameter(torch.empty(out_dim, in_dim))
             self.bias = nn.Parameter(torch.zeros(out_dim))
+            # Initialize to smaller values to prevent sigmoid saturation
             nn.init.xavier_uniform_(self.weight_raw)
+            self.weight_raw.data -= 2.0  # Shift to make softplus outputs smaller
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             w = F.softplus(self.weight_raw)
@@ -92,6 +94,8 @@ class MonotoneCDFModel(BaseModel):
         """Compute F̂(y|x) in [0,1].  Shapes broadcast as (N, …)."""
         inp = torch.cat([x, y], dim=-1)
         g = self.net(inp)
+        # Scale output to prevent sigmoid saturation
+        g = g * 0.1  # Scale down by factor of 10
         return torch.sigmoid(g)
 
     # public API required by Trainer -----------------------------------------
@@ -101,8 +105,7 @@ class MonotoneCDFModel(BaseModel):
         """
         N = x.shape[0]
         device = x.device
-        edges = torch.tensor(self.binner.edges,
-                             dtype=x.dtype, device=device)  # (K+1,)
+        edges = self.binner.edges.clone().detach().to(dtype=x.dtype, device=device)  # (K+1,)
 
         # Broadcast x to (N,K+1, x_dim) and y to (N,K+1,1)
         x_rep = x.unsqueeze(1).repeat(1, edges.numel(), 1)
@@ -111,5 +114,10 @@ class MonotoneCDFModel(BaseModel):
         cdf = self._cdf(x_rep, y_rep)           # (N,K+1,1)
         cdf = cdf.squeeze(-1)
 
+        # Ensure CDF starts at 0 and ends at 1 for proper probability mass
+        cdf_0 = torch.zeros_like(cdf[:, :1])
+        cdf_1 = torch.ones_like(cdf[:, :1])
+        cdf = torch.cat([cdf_0, cdf[:, 1:-1], cdf_1], dim=1)
+        
         probs = (cdf[:, 1:] - cdf[:, :-1]).clamp_min(1e-12)  # (N,K)
         return probs.log()                      # logits expected downstream

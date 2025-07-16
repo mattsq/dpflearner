@@ -52,6 +52,7 @@ from . import evidential  # noqa: F401
 from . import flow_cde  # noqa: F401
 from . import diffusion_cde  # noqa: F401
 from . import iqn_model  # noqa: F401
+from . import monotone_cdf_model  # noqa: F401
 from . import kmn_model  # noqa: F401
 
 from . import imm_jump  # noqa: F401

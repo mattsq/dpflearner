@@ -121,8 +121,8 @@ class ConsistencyCDEModel(TorchModel):
         y_s = y + noise * s
 
         # Convert noisy targets to bin indices for consistency loss
-        y_t_bins = self.binner.continuous_to_discrete(y_t.squeeze(-1))
-        y_s_bins = self.binner.continuous_to_discrete(y_s.squeeze(-1))
+        y_t_bins = self.binner.to_index(y_t.squeeze(-1))
+        y_s_bins = self.binner.to_index(y_s.squeeze(-1))
 
         logits_s = self._forward_logits(x, s).detach()
         logits_t = self._forward_logits(x, t)

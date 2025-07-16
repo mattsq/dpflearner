@@ -117,15 +117,30 @@ class ConsistencyCDEModel(TorchModel):
         s = (t - torch.rand(N, device=device) * self.delta_max).clamp_min(0.0)
 
         noise = torch.randn_like(y) * self.sigma_max
-        y_t = y + noise * t
-        y_s = y + noise * s
+        y_t = y + noise * t.unsqueeze(-1)
+        y_s = y + noise * s.unsqueeze(-1)
+
+        # Convert noisy targets to bin indices for consistency loss
+        y_t_bins = self.binner.to_index(y_t.squeeze(-1))
+        y_s_bins = self.binner.to_index(y_s.squeeze(-1))
 
         logits_s = self._forward_logits(x, s).detach()
         logits_t = self._forward_logits(x, t)
 
+        # Consistency loss: model should predict similar distributions for nearby timesteps
+        # and both should be consistent with the noisy target locations
         prob_s = F.softmax(logits_s, dim=-1)
         prob_t = F.softmax(logits_t, dim=-1)
-        loss = F.mse_loss(prob_t, prob_s)
+        
+        # Consistency constraint: predictions at different timesteps should be similar
+        consistency_loss = F.mse_loss(prob_t, prob_s)
+        
+        # Target consistency: predictions should be consistent with noisy target locations
+        target_loss_t = F.cross_entropy(logits_t, y_t_bins)
+        target_loss_s = F.cross_entropy(logits_s, y_s_bins)
+        
+        # Combined loss
+        loss = consistency_loss + 0.5 * (target_loss_t + target_loss_s)
         return loss
 
     # ------------------- EMA update -----------------------------------

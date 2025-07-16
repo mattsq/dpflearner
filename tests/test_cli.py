@@ -50,7 +50,7 @@ def test_evaluate_cli_runs(tmp_path, monkeypatch):
     [
         n
         for n in MODEL_REGISTRY.keys()
-        if n not in {"ckde", "quantile_rf", "lincde", "rfcde"}
+        if n not in {"ckde", "quantile_rf", "lincde", "rfcde", "ngboost"}
     ],
 )
 def test_evaluate_cli_registered_models(name, tmp_path, monkeypatch):

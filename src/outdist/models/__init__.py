@@ -47,6 +47,7 @@ from . import ckde  # noqa: F401
 from . import lincde  # noqa: F401
 from . import rfcde  # noqa: F401
 from . import logistic_mixture  # noqa: F401
+from . import ngboost_model  # noqa: F401
 from . import evidential  # noqa: F401
 from . import flow_cde  # noqa: F401
 from . import diffusion_cde  # noqa: F401

@@ -33,7 +33,7 @@ from outdist import get_model, Trainer, make_dataset, ConsoleLogger
 from outdist.configs.trainer import TrainerConfig
 from outdist.data.binning import EqualWidthBinning
 
-# Create synthetic dataset
+# Create synthetic dataset (use ``"synthetic-hard"`` for a tougher variant)
 train_ds, val_ds, test_ds = make_dataset("synthetic", n_samples=200, n_features=3)
 
 # Set up model and binning
@@ -76,6 +76,8 @@ For quick experimentation, use the built-in CLI:
 
 ```bash
 python -m outdist.cli --model mlp --dataset synthetic --epochs 5
+# or try the harder variant
+python -m outdist.cli --model mlp --dataset synthetic-hard --epochs 5
 ```
 
 ## Available Models

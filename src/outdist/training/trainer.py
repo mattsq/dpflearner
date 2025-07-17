@@ -169,7 +169,7 @@ class Trainer:
                     logits = out
                     if isinstance(out, dict):
                         logits = out.get("logits", out.get("probs").log())
-                    logits_for_metrics = logits.detach()
+                    logits_for_metrics = logits  # Don't detach in training loop
                     if self.loss_fn is evidential_loss:
                         targets = self._to_index(model, y)
                         loss = self.loss_fn(out["alpha"], targets)
@@ -185,7 +185,7 @@ class Trainer:
                     targets = self._to_index(model, y).view(-1)
                     for name in ("nll", "accuracy", "crps"):
                         metric_fn = METRICS_REGISTRY[name]
-                        value = metric_fn(logits_for_metrics, targets)
+                        value = metric_fn(logits_for_metrics.detach(), targets)
                         metrics[name] = float(value.item())
 
                 if self.logger is not None:
@@ -351,7 +351,7 @@ class Trainer:
                     logits = out
                     if isinstance(out, dict):
                         logits = out.get("logits", out.get("probs").log())
-                    logits_for_metrics = logits
+                    logits_for_metrics = logits.detach()  # Detach for metrics computation
                     
                     if self.loss_fn is evidential_loss:
                         targets = self._to_index(model, y)

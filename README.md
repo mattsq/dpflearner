@@ -84,27 +84,35 @@ python -m outdist.cli --model mlp --dataset synthetic-hard --epochs 5
 
 The following model identifiers are supported by `get_model()` and the CLI:
 
-### Neural Networks
+### Basic Neural Networks
 - `logreg` – logistic regression baseline
 - `mlp` – multilayer perceptron
+- `transformer` – transformer with self-attention and distributional output
+
+### Parametric Distribution Models
 - `gaussian_ls` – Gaussian location–scale model
 - `mdn` – mixture density network
 - `logistic_mixture` – mixture of logistics
+- `evidential` – evidential neural network with Student-T distribution
+
+### Flow-based and Generative Models
 - `flow` – conditional normalising flow
-- `transformer` – transformer with self-attention and distributional output
-- `evidential` – placeholder for an evidential neural network
 - `diffusion` – score-based diffusion model
-- `iqn` – implicit quantile network
-- `kmn` – kernel mixture network
+- `consistency_cde` – one-step conditional density estimator using consistency models
 - `mean_flow` – mean flow model
 
-### Tree-based Methods
+### Specialized Neural Models
+- `iqn` – implicit quantile network
+- `monotone_cdf` – ensures monotonic cumulative distribution functions
+- `kmn` – kernel mixture network
+
+### Tree-based and Ensemble Methods
 - `quantile_rf` – quantile regression forest
 - `lincde` – tree-based estimator via Lindsey's method
 - `rfcde` – random forest conditional density estimator
 - `ngboost` – natural gradient boosting
 
-### Density Estimation
+### Non-parametric Methods
 - `ckde` – conditional kernel density estimator
 - `imm_jump` – generative model based on inductive moment matching
 

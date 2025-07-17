@@ -120,6 +120,32 @@ ckpt = trainer.fit(model, binning, train_ds, val_ds)
 
 ## Git Workflow
 
+### Testing Requirements Before Commits
+**CRITICAL**: Always run the full test suite before committing or pushing changes to the repository.
+
+```bash
+# REQUIRED before every commit/push
+uv run pytest                    # Run all tests
+# OR if not using uv:
+pytest                          # Run all tests
+
+# Only commit/push if ALL tests pass
+git add .
+git commit -m "your message"
+git push
+```
+
+**Why this is mandatory:**
+- Prevents breaking changes from reaching the repository
+- Ensures CI will pass before pushing to remote
+- Maintains code quality and reliability
+- Catches integration issues early
+
+**If tests fail:**
+1. Fix the failing tests before committing
+2. Do not commit broken code "to fix later"
+3. If tests are expected to fail temporarily, document why in commit message
+
 ### Branch Naming Convention
 - **Claude Code branches**: Always prefix branches with `claude-code/` when making changes
 - **Examples**: `claude-code/add-transformer-model`, `claude-code/fix-bug-123`, `claude-code/improve-readme`

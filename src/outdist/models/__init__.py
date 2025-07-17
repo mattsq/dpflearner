@@ -58,3 +58,4 @@ from . import kmn_model  # noqa: F401
 from . import imm_jump  # noqa: F401
 from . import mean_flow  # noqa: F401
 from . import transformer  # noqa: F401
+from . import shortcut_cde_model  # noqa: F401

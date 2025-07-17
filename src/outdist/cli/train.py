@@ -18,7 +18,26 @@ from ..training.logger import ConsoleLogger
 def main(argv: list[str] | None = None) -> None:
     """Parse ``argv`` and run a simple training loop."""
 
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description="Train a model on synthetic or dummy data with customizable train/validation splits",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Train with default 80/10/10 split
+  python -m outdist.cli.train --model mlp --dataset synthetic --epochs 5
+
+  # Custom data split with more validation data
+  python -m outdist.cli.train --model mlp --dataset synthetic --epochs 5 \\
+    --train-split 0.7 --val-split 0.2 --test-split 0.1
+
+  # Train without validation (use all data for training)
+  python -m outdist.cli.train --model mlp --dataset synthetic --epochs 5 --no-validation
+
+  # Train with more samples and larger batches
+  python -m outdist.cli.train --model mlp --dataset synthetic --epochs 10 \\
+    --n-samples 1000 --batch-size 64
+        """
+    )
     parser.add_argument("--model", required=True, help="Model name to train")
     parser.add_argument(
         "--dataset",
@@ -84,10 +103,57 @@ def main(argv: list[str] | None = None) -> None:
         choices=["sub", "div"],
         help="CHCDSConformal scoring mode",
     )
+    parser.add_argument(
+        "--train-split",
+        type=float,
+        default=0.8,
+        help="Fraction of data for training (default: 0.8)",
+    )
+    parser.add_argument(
+        "--val-split",
+        type=float,
+        default=0.1,
+        help="Fraction of data for validation (default: 0.1)",
+    )
+    parser.add_argument(
+        "--test-split",
+        type=float,
+        default=0.1,
+        help="Fraction of data for testing (default: 0.1)",
+    )
+    parser.add_argument(
+        "--n-samples",
+        type=int,
+        default=100,
+        help="Total number of samples to generate (default: 100)",
+    )
+    parser.add_argument(
+        "--no-validation",
+        action="store_true",
+        help="Skip validation during training (train on all data)",
+    )
 
     args = parser.parse_args(argv)
 
-    train_ds, val_ds, _ = make_dataset(args.dataset)
+    if args.no_validation:
+        # Use all data for training when validation is disabled
+        train_ds, _, _ = make_dataset(
+            args.dataset, 
+            n_samples=args.n_samples,
+            splits=(1.0, 0.0, 0.0)
+        )
+        val_ds = None
+    else:
+        # Validate splits sum to 1.0
+        total_split = args.train_split + args.val_split + args.test_split
+        if not abs(total_split - 1.0) < 1e-6:
+            raise ValueError(f"Train/val/test splits must sum to 1.0, got {total_split}")
+
+        train_ds, val_ds, _ = make_dataset(
+            args.dataset, 
+            n_samples=args.n_samples,
+            splits=(args.train_split, args.val_split, args.test_split)
+        )
     calib_cfg = (
         CalibratorConfig(name=args.calibrate, params={"l2": args.l2})
         if args.calibrate

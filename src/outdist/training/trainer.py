@@ -183,7 +183,7 @@ class Trainer:
 
                 if logits_for_metrics is not None:
                     targets = self._to_index(model, y).view(-1)
-                    for name in ("nll", "accuracy"):
+                    for name in ("nll", "accuracy", "crps"):
                         metric_fn = METRICS_REGISTRY[name]
                         value = metric_fn(logits_for_metrics, targets)
                         metrics[name] = float(value.item())
@@ -306,7 +306,7 @@ class Trainer:
             y_pred = probs.log()
 
         if not metrics:
-            metrics = ["nll"]
+            metrics = ["nll", "crps"]
 
         for name in metrics:
             metric_fn = METRICS_REGISTRY[name]
@@ -317,30 +317,71 @@ class Trainer:
 
     # ------------------------------------------------------------------
     def _run_validation(self, model: BaseModel, loader: DataLoader) -> None:
-        """Run one validation epoch."""
+        """Run one validation epoch and compute metrics."""
 
         model.eval()
+        val_losses = []
+        val_metrics = {"nll": [], "accuracy": [], "crps": []}
+        
         with torch.no_grad():
             for batch in loader:
                 x, y = batch
                 x = x.to(self.device)
                 y = y.to(self.device)
+                
+                loss = None
+                logits_for_metrics = None
+                
                 if hasattr(model, "quantile_loss"):
-                    _ = model.quantile_loss(x, y.unsqueeze(1))
+                    loss = model.quantile_loss(x, y.unsqueeze(1))
                 elif self.loss_fn is None and hasattr(model, "imm_loss"):
-                    _ = model.imm_loss(x, y)
+                    loss = model.imm_loss(x, y)
+                    if hasattr(model, "predict_logits"):
+                        logits_for_metrics = model.predict_logits(x)
                 elif self.loss_fn is None and hasattr(model, "dsm_loss"):
-                    _ = model.dsm_loss(x, y)
-                elif hasattr(model, "mf_loss"):
-                    _ = model.mf_loss(x, y)
+                    loss = model.dsm_loss(x, y)
+                    if hasattr(model, "predict_logits"):
+                        logits_for_metrics = model.predict_logits(x)
+                elif self.loss_fn is None and hasattr(model, "mf_loss"):
+                    loss = model.mf_loss(x, y)
+                    if hasattr(model, "predict_logits"):
+                        logits_for_metrics = model.predict_logits(x)
                 else:
                     out = model(x)
                     logits = out
                     if isinstance(out, dict):
                         logits = out.get("logits", out.get("probs").log())
+                    logits_for_metrics = logits
+                    
                     if self.loss_fn is evidential_loss:
                         targets = self._to_index(model, y)
-                        _ = self.loss_fn(out["alpha"], targets)
+                        loss = self.loss_fn(out["alpha"], targets)
                     else:
                         targets = self._to_index(model, y)
-                        _ = self.loss_fn(logits, targets)
+                        loss = self.loss_fn(logits, targets)
+                
+                if loss is not None:
+                    val_losses.append(float(loss.item()))
+                
+                # Compute metrics if we have logits
+                if logits_for_metrics is not None:
+                    targets = self._to_index(model, y).view(-1)
+                    for name in ("nll", "accuracy", "crps"):
+                        metric_fn = METRICS_REGISTRY[name]
+                        value = metric_fn(logits_for_metrics, targets)
+                        val_metrics[name].append(float(value.item()))
+        
+        # Log validation metrics to logger if available
+        if self.logger is not None and val_losses:
+            avg_val_loss = sum(val_losses) / len(val_losses)
+            avg_val_metrics = {}
+            for name, values in val_metrics.items():
+                if values:  # Only include metrics that were computed
+                    avg_val_metrics[f"val_{name}"] = sum(values) / len(values)
+            
+            # Add validation metrics to logger
+            if hasattr(self.logger, 'val_metrics'):
+                self.logger.val_metrics = avg_val_metrics
+            else:
+                # Store validation metrics for epoch end logging
+                self.logger._val_metrics = avg_val_metrics

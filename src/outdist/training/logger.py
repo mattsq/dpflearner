@@ -71,4 +71,10 @@ class ConsoleLogger(TrainingLogger):
         parts = [f"Epoch {epoch} average loss: {avg_loss:.4f}"]
         for name, value in metrics.items():
             parts.append(f"{name}: {value:.4f}")
+        
+        # Include validation metrics if available
+        if hasattr(self, '_val_metrics') and self._val_metrics:
+            for name, value in self._val_metrics.items():
+                parts.append(f"{name}: {value:.4f}")
+        
         print(" ".join(parts))

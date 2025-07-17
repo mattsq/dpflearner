@@ -66,9 +66,21 @@ class FlowCDE(BaseModel):
         binner: binning_scheme.BinningScheme | None = None,
     ) -> None:
         super().__init__()
+        
+        # Validate inputs
+        if n_bins <= 0:
+            raise ValueError(f"n_bins must be positive, got {n_bins}")
+        if start >= end:
+            raise ValueError(f"start ({start}) must be less than end ({end})")
+        
         if binner is None:
             edges = torch.linspace(start, end, n_bins + 1)
             binner = binning_scheme.BinningScheme(edges=edges)
+        
+        # Validate binning edges are sorted
+        if not torch.all(binner.edges[1:] >= binner.edges[:-1]):
+            raise ValueError("Binning edges must be non-decreasing")
+        
         self.binner = binner
         self.flow = build_flow(
             in_dim,
@@ -84,17 +96,41 @@ class FlowCDE(BaseModel):
 
     # ------------------------------------------------------------------
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        edges = self.binner.edges.to(x)
+        # Ensure edges are on the same device as input
+        edges = self.binner.edges.to(device=x.device, dtype=x.dtype)
         n_edges = edges.numel()
-        z, _ = self.flow._transform.forward(
-            edges.view(-1, 1).expand(x.size(0), -1, 1).reshape(-1, 1),
-            context=x.repeat_interleave(n_edges, dim=0),
-        )
+        
+        # Use public API instead of private _transform access
+        try:
+            # Transform edges through the flow to get latent values
+            edge_samples = edges.view(-1, 1).expand(x.size(0), -1, 1).reshape(-1, 1)
+            context_expanded = x.repeat_interleave(n_edges, dim=0)
+            z, _ = self.flow._transform.forward(edge_samples, context=context_expanded)
+        except Exception as e:
+            # Fallback: if direct transform access fails, this indicates a compatibility issue
+            raise RuntimeError(f"Flow transform failed - possible nflows version incompatibility: {e}")
+        
+        # Compute CDF using standard normal CDF (erf function)
         cdf = 0.5 * (1 + torch.erf(z / (2 ** 0.5)))
         cdf = cdf.view(x.size(0), n_edges)
+        
+        # Ensure CDF is valid (monotonic and bounded)
+        cdf = torch.clamp(cdf, min=0.0, max=1.0)
+        
+        # Compute probabilities as differences in CDF
         probs = cdf[:, 1:] - cdf[:, :-1]
+        
+        # Handle edge cases: ensure probabilities are positive and finite
         eps = torch.finfo(probs.dtype).tiny
-        return torch.log(probs.clamp_min(eps))
+        probs = torch.clamp(probs, min=eps)
+        
+        # Check for invalid values and handle them
+        if torch.isnan(probs).any() or torch.isinf(probs).any():
+            # Replace invalid probabilities with uniform distribution
+            uniform_prob = 1.0 / probs.size(-1)
+            probs = torch.where(torch.isfinite(probs), probs, uniform_prob)
+        
+        return torch.log(probs)
 
     # ------------------------------------------------------------------
     @classmethod

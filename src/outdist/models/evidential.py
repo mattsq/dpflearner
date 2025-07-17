@@ -82,13 +82,38 @@ class EvidentialModel(BaseModel):
     def bin_logits(self, x: torch.Tensor) -> torch.Tensor:
         mu, v, alpha, beta = self.head(x)
         edges = self.binner.edges.to(x)
+        df = 2 * alpha
         scale = torch.sqrt(beta * (1 + v) / (alpha * v) + 1e-8)
-        z = (edges[None, :, None] - mu.unsqueeze(1)) / scale.unsqueeze(1)
-        cdf = torch.sigmoid(z)
-        probs = cdf[:, 1:] - cdf[:, :-1]
-        probs = probs.squeeze(-1)
-        eps = torch.finfo(probs.dtype).tiny
-        return (probs + eps).log()
+        
+        # Compute bin probabilities by evaluating Student-T at bin centers
+        # This is a reasonable approximation for narrow bins
+        batch_size = x.shape[0]
+        n_bins = len(edges) - 1
+        
+        # Compute bin centers
+        bin_centers = (edges[:-1] + edges[1:]) / 2  # (n_bins,)
+        bin_width = edges[1] - edges[0]  # Assuming uniform bins
+        
+        # Expand bin centers for batch computation
+        bin_centers = bin_centers.unsqueeze(0).expand(batch_size, -1)  # (batch_size, n_bins)
+        
+        # Create Student-T distribution and compute probabilities at bin centers
+        dist = StudentT(df.squeeze(-1), loc=mu.squeeze(-1), scale=scale.squeeze(-1))
+        
+        # Compute log probabilities at bin centers for each batch element
+        bin_probs = torch.zeros(batch_size, n_bins, device=x.device)
+        for i in range(batch_size):
+            # Extract distribution parameters for this batch element
+            single_dist = StudentT(df[i].item(), loc=mu[i].item(), scale=scale[i].item())
+            # Compute probabilities at bin centers
+            log_probs = single_dist.log_prob(bin_centers[i])
+            bin_probs[i] = torch.exp(log_probs) * bin_width
+        
+        # Normalize to ensure probabilities sum to 1
+        bin_probs = bin_probs / bin_probs.sum(dim=1, keepdim=True)
+        
+        eps = torch.finfo(bin_probs.dtype).tiny
+        return (bin_probs + eps).log()
 
     # ------------------------------------------------------------------
     @classmethod

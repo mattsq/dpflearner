@@ -56,18 +56,41 @@ class TrainingLogger:
 class ConsoleLogger(TrainingLogger):
     """Simple logger that prints batch and epoch statistics to ``stdout``."""
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._is_single_step = False
+
+    def start_epoch(self, epoch: int, num_batches: int) -> None:
+        """Reset state for a new epoch."""
+        super().start_epoch(epoch, num_batches)
+        # Detect if this is a single-step model (1 epoch, 1 batch)
+        self._is_single_step = epoch == 1 and num_batches == 1
+
     def on_batch_end(
         self, batch_idx: int, loss: float, metrics: dict[str, float]
     ) -> None:
+        # For single-step models, show a simple completion message
+        if self._is_single_step:
+            if "note" in metrics:
+                print(metrics["note"])
+            else:
+                print("Model fitting complete")
+            return
+            
         is_last = batch_idx + 1 == self.num_batches
         end = "\n" if is_last else "\r"
         parts = [f"Batch {batch_idx + 1}/{self.num_batches}"]
         parts.append(f"loss: {loss:.4f}")
         for name, value in metrics.items():
-            parts.append(f"{name}: {value:.4f}")
+            if name != "note":  # Skip the note field in regular batch output
+                parts.append(f"{name}: {value:.4f}")
         print(" ".join(parts), end=end, flush=True)
 
     def on_epoch_end(self, epoch: int, avg_loss: float, metrics: dict[str, float]) -> None:
+        # For single-step models, don't print epoch summary since we already printed completion
+        if self._is_single_step:
+            return
+            
         parts = [f"Epoch {epoch} average loss: {avg_loss:.4f}"]
         for name, value in metrics.items():
             parts.append(f"{name}: {value:.4f}")

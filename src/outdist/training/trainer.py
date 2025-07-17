@@ -132,69 +132,83 @@ class Trainer:
             else None
         )
 
-        for epoch in range(1, self.cfg.max_epochs + 1):
+        # Check if this is a single-step model that doesn't need epoch training
+        is_single_step_model = (
+            hasattr(model, "fit") and 
+            (not params or  # No trainable parameters
+             hasattr(model, "_is_single_step_model"))  # Explicit flag
+        )
+
+        # For single-step models, skip the epoch loop entirely
+        if is_single_step_model:
             if self.logger is not None:
-                self.logger.start_epoch(epoch, len(train_loader))
-            model.train()
-            for batch_idx, batch in enumerate(train_loader):
-                x, y = batch
-                x = x.to(self.device)
-                y = y.to(self.device)
-
-                if optimizer is not None:
-                    optimizer.zero_grad()
-
-                metrics = {}
-                logits_for_metrics = None
-
-                if hasattr(model, "quantile_loss"):
-                    loss = model.quantile_loss(x, y.unsqueeze(1))
-                elif self.loss_fn is None and hasattr(model, "imm_loss"):
-                    loss = model.imm_loss(x, y)
-                    if hasattr(model, "predict_logits"):
-                        with torch.no_grad():
-                            logits_for_metrics = model.predict_logits(x)
-                elif self.loss_fn is None and hasattr(model, "dsm_loss"):
-                    loss = model.dsm_loss(x, y)
-                    if hasattr(model, "predict_logits"):
-                        with torch.no_grad():
-                            logits_for_metrics = model.predict_logits(x)
-                elif self.loss_fn is None and hasattr(model, "mf_loss"):
-                    loss = model.mf_loss(x, y)
-                    if hasattr(model, "predict_logits"):
-                        with torch.no_grad():
-                            logits_for_metrics = model.predict_logits(x)
-                else:
-                    out = model(x)
-                    logits = out
-                    if isinstance(out, dict):
-                        logits = out.get("logits", out.get("probs").log())
-                    logits_for_metrics = logits  # Don't detach in training loop
-                    if self.loss_fn is evidential_loss:
-                        targets = self._to_index(model, y)
-                        loss = self.loss_fn(out["alpha"], targets)
-                    else:
-                        targets = self._to_index(model, y)
-                        loss = self.loss_fn(logits, targets)
-
-                if optimizer is not None:
-                    loss.backward()
-                    optimizer.step()
-
-                if logits_for_metrics is not None:
-                    targets = self._to_index(model, y).view(-1)
-                    for name in ("nll", "accuracy", "crps"):
-                        metric_fn = METRICS_REGISTRY[name]
-                        value = metric_fn(logits_for_metrics.detach(), targets)
-                        metrics[name] = float(value.item())
-
+                self.logger.start_epoch(1, 1)  # Single epoch, single "batch"
+                self.logger.log_batch(0, 0.0, {"note": "Single-step model fitting complete"})
+                self.logger.end_epoch(1)
+        else:
+            for epoch in range(1, self.cfg.max_epochs + 1):
                 if self.logger is not None:
-                    self.logger.log_batch(batch_idx, float(loss.item()), metrics)
+                    self.logger.start_epoch(epoch, len(train_loader))
+                model.train()
+                for batch_idx, batch in enumerate(train_loader):
+                    x, y = batch
+                    x = x.to(self.device)
+                    y = y.to(self.device)
 
-            if val_loader is not None:
-                self._run_validation(model, val_loader)
-            if self.logger is not None:
-                self.logger.end_epoch(epoch)
+                    if optimizer is not None:
+                        optimizer.zero_grad()
+
+                    metrics = {}
+                    logits_for_metrics = None
+
+                    if hasattr(model, "quantile_loss"):
+                        loss = model.quantile_loss(x, y.unsqueeze(1))
+                    elif self.loss_fn is None and hasattr(model, "imm_loss"):
+                        loss = model.imm_loss(x, y)
+                        if hasattr(model, "predict_logits"):
+                            with torch.no_grad():
+                                logits_for_metrics = model.predict_logits(x)
+                    elif self.loss_fn is None and hasattr(model, "dsm_loss"):
+                        loss = model.dsm_loss(x, y)
+                        if hasattr(model, "predict_logits"):
+                            with torch.no_grad():
+                                logits_for_metrics = model.predict_logits(x)
+                    elif self.loss_fn is None and hasattr(model, "mf_loss"):
+                        loss = model.mf_loss(x, y)
+                        if hasattr(model, "predict_logits"):
+                            with torch.no_grad():
+                                logits_for_metrics = model.predict_logits(x)
+                    else:
+                        out = model(x)
+                        logits = out
+                        if isinstance(out, dict):
+                            logits = out.get("logits", out.get("probs").log())
+                        logits_for_metrics = logits  # Don't detach in training loop
+                        if self.loss_fn is evidential_loss:
+                            targets = self._to_index(model, y)
+                            loss = self.loss_fn(out["alpha"], targets)
+                        else:
+                            targets = self._to_index(model, y)
+                            loss = self.loss_fn(logits, targets)
+
+                    if optimizer is not None:
+                        loss.backward()
+                        optimizer.step()
+
+                    if logits_for_metrics is not None:
+                        targets = self._to_index(model, y).view(-1)
+                        for name in ("nll", "accuracy", "crps"):
+                            metric_fn = METRICS_REGISTRY[name]
+                            value = metric_fn(logits_for_metrics.detach(), targets)
+                            metrics[name] = float(value.item())
+
+                    if self.logger is not None:
+                        self.logger.log_batch(batch_idx, float(loss.item()), metrics)
+
+                if val_loader is not None:
+                    self._run_validation(model, val_loader)
+                if self.logger is not None:
+                    self.logger.end_epoch(epoch)
 
         # Fit calibrator on validation data if requested
         if self.calibrator_cfg is not None and val_loader is not None:

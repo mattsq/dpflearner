@@ -33,9 +33,12 @@ class TrainingLogger:
     def end_epoch(self, epoch: int) -> None:
         """Compute epoch statistics and trigger :meth:`on_epoch_end`."""
         avg_loss = sum(self.losses) / len(self.losses) if self.losses else 0.0
-        avg_metrics = {
-            name: sum(values) / len(values) for name, values in self.metrics.items()
-        }
+        avg_metrics = {}
+        for name, values in self.metrics.items():
+            # Only compute averages for numeric values
+            numeric_values = [v for v in values if isinstance(v, (int, float))]
+            if numeric_values:
+                avg_metrics[name] = sum(numeric_values) / len(numeric_values)
         self.on_epoch_end(epoch, avg_loss, avg_metrics)
 
     # ------------------------------------------------------------------

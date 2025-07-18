@@ -100,11 +100,13 @@ The following model identifiers are supported by `get_model()` and the CLI:
 - `diffusion` – score-based diffusion model
 - `consistency_cde` – one-step conditional density estimator using consistency models
 - `mean_flow` – mean flow model
+- `shortcut_cde` – one-to-few-step conditional density estimator via Shortcut models
 
 ### Specialized Neural Models
 - `iqn` – implicit quantile network
 - `monotone_cdf` – ensures monotonic cumulative distribution functions
 - `kmn` – kernel mixture network
+- `spline_transformer` – transformer encoder with spline-autoregressive head
 
 ### Tree-based and Ensemble Methods
 - `quantile_rf` – quantile regression forest

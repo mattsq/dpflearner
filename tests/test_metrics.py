@@ -1,5 +1,5 @@
 import torch
-from outdist.metrics import nll, accuracy, crps
+from outdist.metrics import nll, accuracy, crps, METRICS_REGISTRY
 
 
 def test_nll_matches_cross_entropy():
@@ -55,3 +55,11 @@ def test_crps_float_targets():
     targets = torch.tensor([0.0, 1.0])  # float dtype
     score = crps(logits, targets)
     assert score >= 0.0
+
+
+def test_metrics_registry_contents():
+    """METRICS_REGISTRY should expose the expected metrics."""
+    assert METRICS_REGISTRY["nll"] is nll
+    assert METRICS_REGISTRY["accuracy"] is accuracy
+    assert METRICS_REGISTRY["crps"] is crps
+    assert set(METRICS_REGISTRY.keys()) == {"nll", "accuracy", "crps"}
